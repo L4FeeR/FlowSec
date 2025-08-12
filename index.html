@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure Messenger Login</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <form id="login-form" class="form">
+            <h2>Login to Secure Messenger</h2>
+            <div class="input-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" required>
+            </div>
+            <button type="button" id="send-otp">Send OTP</button>
+            <div class="input-group" id="otp-group" style="display:none;">
+                <label for="otp">Enter OTP</label>
+                <input type="text" id="otp" name="otp" maxlength="6" required>
+            </div>
+            <button type="submit" id="login-btn" style="display:none;">Login</button>
+            <p class="switch-form">Don't have an account? <a href="#" id="show-signup">Sign up</a></p>
+        </form>
+        <form id="signup-form" class="form" style="display:none;">
+            <h2>Sign Up for Secure Messenger</h2>
+            <div class="input-group">
+                <label for="signup-email">Email</label>
+                <input type="email" id="signup-email" name="signup-email" required>
+            </div>
+            <div class="input-group">
+                <label for="signup-username">Username</label>
+                <input type="text" id="signup-username" name="signup-username" minlength="3" maxlength="20" pattern="[a-zA-Z0-9_]+" required>
+            </div>
+            <div class="input-group">
+                <label for="signup-icon">Profile Icon (optional)</label>
+                <input type="file" id="signup-icon" name="signup-icon" accept="image/*">
+            </div>
+            <button type="button" id="signup-send-otp">Send OTP</button>
+            <div class="input-group" id="signup-otp-group" style="display:none;">
+                <label for="signup-otp">Enter OTP</label>
+                <input type="text" id="signup-otp" name="signup-otp" maxlength="6" required>
+            </div>
+            <button type="submit" id="signup-btn" style="display:none;">Sign Up</button>
+            <p class="switch-form">Already have an account? <a href="#" id="show-login">Login</a></p>
+        </form>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
