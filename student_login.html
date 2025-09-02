@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student Login</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="login-container">
+    <h2>Student Login</h2>
+    <form id="student-login-form">
+      <input type="email" id="student-email" placeholder="Email" required>
+      <input type="password" id="student-password" placeholder="Password" required>
+      <button type="submit">Login</button>
+    </form>
+    <a href="index.html">Back to Home</a>
+  </div>
+<script>
+document.getElementById('student-login-form').onsubmit = async function(e) {
+  e.preventDefault();
+  const email = document.getElementById('student-email').value.trim();
+  const password = document.getElementById('student-password').value.trim();
+  // Replace with your actual login API endpoint and logic
+  // For demo, just check if email exists in DB
+  const res = await fetch(`/api/user?email=${encodeURIComponent(email)}`);
+  if (res.ok) {
+    localStorage.setItem('userId', email);
+    window.location.href = 'messenger.html';
+  } else {
+    alert('Invalid login. Please check your email.');
+  }
+};
+</script>
+</body>
+</html>

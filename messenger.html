@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Messenger</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="dashboard-flex">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="dashboard-title">Messenger</div>
+        <ul class="sidebar-menu">
+          <li><a href="#">Profile</a></li>
+          <li><a href="#">Settings</a></li>
+          <li><a href="index.html">Logout</a></li>
+        </ul>
+      </div>
+      <h3>Navigation</h3>
+      <ul>
+        <li><a href="student_dashboard.html">Home</a></li>
+        <li><a href="messenger.html">Messenger</a></li>
+        <li><a href="assignments.html">Assignments</a></li>
+        <li><a href="recent_activity.html">Recent Activity</a></li>
+      </ul>
+    </aside>
+    <main class="main-content expanded-content">
+      <div class="whatsapp-messenger">
+        <aside class="wa-sidebar">
+          <div class="wa-profile">
+            <img id="wa-profile-img" src="https://img.icons8.com/color/48/000000/user.png" alt="Profile" class="wa-profile-img" />
+            <div class="wa-profile-info">
+              <div class="wa-profile-name" id="wa-profile-name">Loading...</div>
+              <div class="wa-profile-status">Online</div>
+            </div>
+          </div>
+          <div class="wa-search">
+            <input type="text" placeholder="Search or start new chat" class="wa-search-input" id="wa-search-input" />
+          </div>
+          <ul class="wa-chat-list" id="user-list">
+            <!-- Users will be dynamically loaded here -->
+          </ul>
+        </aside>
+        <section class="wa-chat-window">
+          <div class="wa-chat-header">
+            <img src="https://img.icons8.com/color/36/000000/user.png" alt="Chat User" class="wa-chat-user-img" />
+            <span id="chat-with">Select a user to chat</span>
+            <div class="wa-chat-actions">
+              <input type="file" id="file-input" style="display:none;" />
+              <button id="attach-btn" title="Attach file">📎</button>
+              <button id="logout-btn" onclick="window.location.href='index.html'" title="Logout">🚪</button>
+            </div>
+          </div>
+          <div class="wa-chat-messages" id="chat-messages">
+            <!-- Messages will be dynamically loaded here -->
+          </div>
+          <form class="wa-chat-input" id="chat-form">
+            <input type="text" id="chat-message" placeholder="Type a message" autocomplete="off" />
+            <button type="submit">Send</button>
+          </form>
+        </section>
+      </div>
+<style>
+.whatsapp-messenger {
+  display: flex;
+  height: 90vh;
+  background: #222;
+  min-width: 0;
+}
+.wa-sidebar {
+  width: 340px;
+  background: #43b047;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  border-right: 1px solid #e0e0e0;
+  height: 100%;
+}
+.wa-profile {
+  display: flex;
+  align-items: center;
+  padding: 1.2rem 1.2rem 0.8rem 1.2rem;
+  border-bottom: 1px solid #e0e0e0;
+}
+.wa-profile-img {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  margin-right: 1rem;
+}
+.wa-profile-info {
+  display: flex;
+  flex-direction: column;
+}
+.wa-profile-name {
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+.wa-profile-status {
+  font-size: 0.95rem;
+  color: #e0e0e0;
+}
+.wa-search {
+  padding: 0.8rem 1.2rem;
+  border-bottom: 1px solid #e0e0e0;
+}
+.wa-search-input {
+  width: 100%;
+  padding: 0.6rem 1rem;
+  border-radius: 8px;
+  border: none;
+  font-size: 1rem;
+}
+.wa-chat-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  flex: 1;
+  overflow-y: auto;
+}
+.wa-chat-list li {
+  padding: 1rem 1.2rem;
+  border-bottom: 1px solid #e0e0e0;
+  cursor: pointer;
+  font-size: 1.05rem;
+  font-weight: 500;
+  background: rgba(255,255,255,0.04);
+  color: #fff;
+  transition: background 0.2s;
+}
+.wa-chat-list li.active,
+.wa-chat-list li:hover {
+  background: #fff;
+  color: #43b047;
+}
+.wa-chat-window {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: #222;
+  color: #fff;
+  min-width: 0;
+  height: 100%;
+}
+.wa-chat-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.2rem 2rem 1.2rem 2rem;
+  border-bottom: 1px solid #e0e0e0;
+}
+.wa-chat-user-img {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+}
+.wa-chat-actions button {
+  background: none;
+  border: none;
+  font-size: 1.3rem;
+  color: #43b047;
+  cursor: pointer;
+  margin-left: 0.8rem;
+  transition: color 0.2s;
+}
+.wa-chat-actions button:hover {
+  color: #222;
+}
+.wa-chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  background: #333;
+  border-radius: 10px;
+  padding: 2rem 2rem 1.5rem 2rem;
+  margin: 0.5rem 2rem 1.2rem 2rem;
+}
+.wa-message {
+  margin-bottom: 1.2rem;
+  padding: 0.8rem 1.2rem;
+  border-radius: 12px;
+  max-width: 70%;
+  word-break: break-word;
+  font-size: 1.05rem;
+}
+.wa-message.sent {
+  background: #43b047;
+  color: #fff;
+  margin-left: auto;
+  text-align: right;
+}
+.wa-message.received {
+  background: #fff;
+  color: #222;
+  margin-right: auto;
+  text-align: left;
+}
+.wa-msg-text {
+  display: block;
+  margin-bottom: 0.2rem;
+}
+.wa-msg-time {
+  font-size: 0.85rem;
+  color: #bbb;
+}
+.wa-chat-input {
+  display: flex;
+  gap: 1rem;
+  padding: 0 2rem 2rem 2rem;
+}
+.wa-chat-input input[type="text"] {
+  flex: 1;
+  padding: 0.8rem 1.2rem;
+  border-radius: 8px;
+  border: none;
+  font-size: 1.05rem;
+}
+.wa-chat-input button {
+  background: #0de69e;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 0.8rem 2rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.wa-chat-input button:hover {
+  background: #43b047;
+}
+</style>
+  <!-- Socket.io removed. -->
+      <script>
+  // REST API integration for chat
+      const userList = document.getElementById('user-list');
+      const chatMessages = document.getElementById('chat-messages');
+      const chatWith = document.getElementById('chat-with');
+      const chatForm = document.getElementById('chat-form');
+      const chatInput = document.getElementById('chat-message');
+      const attachBtn = document.getElementById('attach-btn');
+      const fileInput = document.getElementById('file-input');
+
+  let users = [];
+  let currentUser = null;
+  let loggedInUser = null;
+  const CURRENT_USER_ID = localStorage.getItem('userId') || 'demoUser'; // Replace with actual user ID logic
+  let messages = {};
+      async function loadLoggedInUser() {
+        // Get user from DB using email stored in localStorage
+        let email = CURRENT_USER_ID;
+        let res;
+        try {
+          res = await fetch(`/api/user?email=${encodeURIComponent(email)}`);
+        } catch (err) {
+          document.getElementById('wa-profile-name').textContent = 'Error fetching user';
+          alert('Error fetching user: ' + err);
+          return;
+        }
+        if (res.ok) {
+          let data = await res.json();
+          if (!data.user) {
+            document.getElementById('wa-profile-name').textContent = 'User not found';
+            alert('User not found in database for email: ' + email);
+            return;
+          }
+          loggedInUser = data.user;
+          document.getElementById('wa-profile-name').textContent = loggedInUser.username || loggedInUser.email;
+          // Set profile image if available
+          const profileImg = document.getElementById('wa-profile-img');
+          if (loggedInUser.profileIcon && loggedInUser.profileIcon.length > 0) {
+            profileImg.src = loggedInUser.profileIcon;
+          } else {
+            profileImg.src = "https://img.icons8.com/color/48/000000/user.png";
+          }
+        } else {
+          document.getElementById('wa-profile-name').textContent = 'Unknown User';
+          alert('Backend error: ' + res.status + ' ' + res.statusText);
+        }
+      }
+
+        const API_BASE = 'http://localhost:5000';
+      async function fetchUsers(role) {
+          const res = await fetch(`${API_BASE}/api/users-by-role?role=${role}`);
+        const data = await res.json();
+        return data.users || [];
+      }
+
+      async function loadUsers(searchTerm = '') {
+        // Fetch both teachers and students
+        let teachers = [], students = [];
+        try {
+          teachers = await fetchUsers('teacher');
+        } catch (err) {
+          alert('Error fetching teachers: ' + err);
+        }
+        try {
+          students = await fetchUsers('student');
+        } catch (err) {
+          alert('Error fetching students: ' + err);
+        }
+        users = [...teachers, ...students];
+        // Filter users by search term
+        if (searchTerm) {
+          users = users.filter(u => (u.username || u.email).toLowerCase().includes(searchTerm.toLowerCase()));
+        }
+        // Remove currentUser auto-selection to avoid blocking user selection
+        currentUser = null;
+        userList.innerHTML = '';
+        if (users.length === 0) {
+          const li = document.createElement('li');
+          li.textContent = 'No users found.';
+          userList.appendChild(li);
+        }
+        users.forEach(user => {
+          // Do not show the logged-in user in the chat list
+          if (loggedInUser && user.email === loggedInUser.email) return;
+          const li = document.createElement('li');
+          // Show profile icon for each user
+          const img = document.createElement('img');
+          img.src = user.profileIcon && user.profileIcon.length > 0 ? user.profileIcon : "https://img.icons8.com/color/36/000000/user.png";
+          img.alt = "User";
+          img.className = "wa-chat-user-img";
+          li.appendChild(img);
+          li.appendChild(document.createTextNode(" " + (user.username || user.email)));
+          li.className = '';
+          li.onclick = async () => {
+            currentUser = user;
+            chatWith.textContent = user.username || user.email;
+            // Create or get chat between logged-in user and selected user
+            let chatRes;
+            try {
+                chatRes = await fetch(`${API_BASE}/api/chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userA: loggedInUser.email, userB: user.email })
+              });
+            } catch (err) {
+              alert('Error creating chat: ' + err);
+              return;
+            }
+            if (!chatRes.ok) {
+              alert('Backend error creating chat: ' + chatRes.status + ' ' + chatRes.statusText);
+              return;
+            }
+            const chatData = await chatRes.json();
+            if (!chatData.chat) {
+              alert('No chat returned from backend.');
+              return;
+            }
+            currentUser.chatId = chatData.chat._id;
+            loadMessages();
+            // Highlight selected user
+            Array.from(userList.children).forEach(child => child.classList.remove('active'));
+            li.classList.add('active');
+          };
+          userList.appendChild(li);
+        });
+      }
+      // Search input event
+      document.addEventListener('DOMContentLoaded', () => {
+        const searchInput = document.getElementById('wa-search-input');
+        if (searchInput) {
+          searchInput.addEventListener('input', (e) => {
+            loadUsers(e.target.value);
+          });
+        }
+      });
+
+      async function loadMessages() {
+        chatMessages.innerHTML = '';
+        if (!currentUser || !currentUser.chatId) return;
+        // Fetch messages from backend
+    const res = await fetch(`${API_BASE}/api/messages?chatId=${currentUser.chatId}`);
+        const data = await res.json();
+        (data.messages || []).forEach(msg => {
+          const div = document.createElement('div');
+          div.className = 'wa-message ' + (msg.sender === CURRENT_USER_ID ? 'sent' : 'received');
+          div.innerHTML = `<span class=\"wa-msg-text\">${msg.content}</span><span class=\"wa-msg-time\">${new Date(msg.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>`;
+          chatMessages.appendChild(div);
+        });
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+      }
+
+      chatForm.onsubmit = async function(e) {
+        e.preventDefault();
+        const text = chatInput.value.trim();
+        if (!text || !currentUser || !currentUser.chatId) return;
+        // Send message via REST API
+    await fetch(`${API_BASE}/api/messages`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chatId: currentUser.chatId,
+            sender: CURRENT_USER_ID,
+            receiver: currentUser._id,
+            content: text,
+            file: null
+          })
+        });
+        chatInput.value = '';
+        loadMessages();
+      };
+
+  // No socket receiveMessage. Messages are loaded from DB.
+
+      attachBtn.onclick = () => fileInput.click();
+      fileInput.onchange = async () => {
+        const file = fileInput.files[0];
+        if (file && currentUser && currentUser.chatId) {
+          // For demo, just show file name. For real app, upload file and send URL.
+            await fetch(`${API_BASE}/api/messages`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chatId: currentUser.chatId,
+              sender: CURRENT_USER_ID,
+              receiver: currentUser._id,
+              content: `📎 <a href='#' download='${file.name}'>${file.name}</a>`,
+              file: null // Replace with file URL after upload
+            })
+          });
+          loadMessages();
+        }
+      };
+
+      // Initial load
+      loadLoggedInUser().then(() => {
+        loadUsers();
+      });
+      </script>
+    </main>
+  </div>
+</body>
+</html>

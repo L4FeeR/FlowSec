@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Teacher Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="dashboard-flex">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="dashboard-title">Teacher Dashboard</div>
+        <ul class="sidebar-menu">
+          <li><a href="#">Profile</a></li>
+          <li><a href="#">Settings</a></li>
+          <li><a href="index.html">Logout</a></li>
+        </ul>
+      </div>
+      <h3>Navigation</h3>
+      <ul>
+        <li><a href="teacher_dashboard.html">Home</a></li>
+        <li><a href="messenger.html">Messenger</a></li>
+        <li><a href="upload_material.html">Upload Material</a></li>
+        <li><a href="assignments.html">Assignments</a></li>
+        <li><a href="recent_activity.html">Recent Activity</a></li>
+      </ul>
+    </aside>
+    <main class="main-content expanded-content">
+      <div class="card">
+        <h2>Recent Activity</h2>
+        <table class="dashboard-table">
+          <thead>
+            <tr>
+              <th>Title</th>
+              <th>Type</th>
+              <th>Date</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Assignment 1</td>
+              <td>Assignment</td>
+              <td>26-08-2025</td>
+              <td><button>Edit</button> <button>Delete</button></td>
+            </tr>
+            <tr>
+              <td>Lecture Video</td>
+              <td>Video</td>
+              <td>25-08-2025</td>
+              <td><button>View</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

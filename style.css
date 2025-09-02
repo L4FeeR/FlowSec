@@ -1,3 +1,305 @@
+/* New dashboard flex layout */
+.dashboard-flex {
+    display: flex;
+    min-height: 100vh;
+}
+.sidebar {
+    background: #43b047;
+    color: #fff;
+    width: 320px;
+    padding: 2.5rem 1.5rem 2.5rem 1.5rem;
+    min-height: 100vh;
+    box-shadow: 2px 0 8px rgba(44, 62, 80, 0.08);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+.sidebar-header {
+    margin-bottom: 2rem;
+}
+.dashboard-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+.sidebar-menu {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 1rem 0;
+    display: flex;
+    gap: 1.2rem;
+}
+.sidebar-menu li a {
+    color: #fff;
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 1rem;
+    transition: color 0.2s;
+}
+.sidebar-menu li a:hover {
+    color: #222;
+}
+.sidebar h3 {
+    font-size: 1.1rem;
+    margin-bottom: 1.2rem;
+    font-weight: 600;
+}
+.sidebar ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.sidebar ul li {
+    margin-bottom: 1.2rem;
+}
+.sidebar ul li a {
+    color: #fff;
+    text-decoration: none;
+    font-size: 1.05rem;
+    font-weight: 500;
+    transition: color 0.2s;
+}
+.sidebar ul li a:hover {
+    color: #222;
+}
+.main-content {
+    flex: 1;
+    padding: 3.5rem 3.5rem 3.5rem 3.5rem;
+    min-width: 0;
+}
+.expanded-content {
+    width: 100%;
+    height: 100%;
+}
+/* Main header bar */
+.main-header {
+    background: #43b047;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.2rem 2rem 1.2rem 2rem;
+    font-size: 2rem;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(44, 62, 80, 0.08);
+}
+.dashboard-logo {
+    font-size: 1.2rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+}
+
+/* Top navigation bar */
+.top-nav {
+    background: #222;
+    color: #fff;
+    padding: 0.5rem 2rem;
+    display: flex;
+    align-items: center;
+}
+.top-nav ul {
+    list-style: none;
+    display: flex;
+    gap: 2rem;
+    margin: 0;
+    padding: 0;
+}
+.top-nav ul li a {
+    color: #fff;
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.2s;
+}
+.top-nav ul li a:hover {
+    color: #43b047;
+}
+
+/* Dashboard layout */
+.dashboard-container {
+    display: flex;
+    min-height: 80vh;
+}
+.sidebar {
+    background: #43b047;
+    color: #fff;
+    width: 220px;
+    padding: 2rem 1rem 2rem 1rem;
+    min-height: 100%;
+    box-shadow: 2px 0 8px rgba(44, 62, 80, 0.08);
+}
+.sidebar h3 {
+    font-size: 1.1rem;
+    margin-bottom: 1.5rem;
+    font-weight: 600;
+}
+.sidebar ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.sidebar ul li {
+    margin-bottom: 1.2rem;
+}
+.sidebar ul li a {
+    color: #fff;
+    text-decoration: none;
+    font-size: 1.05rem;
+    font-weight: 500;
+    transition: color 0.2s;
+}
+.sidebar ul li a:hover {
+    color: #222;
+}
+
+.main-content {
+    flex: 1;
+    padding: 2rem 2rem 2rem 2rem;
+}
+.card {
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 4px 16px rgba(44, 62, 80, 0.10);
+    padding: 2rem 1.5rem 1.5rem 1.5rem;
+    margin-bottom: 2rem;
+}
+.dashboard-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+}
+.dashboard-table th, .dashboard-table td {
+    padding: 0.8rem 1rem;
+    text-align: left;
+}
+.dashboard-table th {
+    background: #43b047;
+    color: #fff;
+    font-weight: 600;
+}
+.dashboard-table tr {
+    background: #f6f8fa;
+}
+.dashboard-table td {
+    border-bottom: 1px solid #e0e0e0;
+}
+.dashboard-table button {
+    background: #43b047;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 0.4rem 1rem;
+    margin-right: 0.5rem;
+    cursor: pointer;
+    font-size: 0.95rem;
+    transition: background 0.2s;
+}
+.dashboard-table button:hover {
+    background: #222;
+}
+body {
+    margin: 0;
+    font-family: 'Segoe UI', 'Roboto', Arial, sans-serif;
+    background: #f6f8fa;
+    color: #222;
+}
+
+.navbar {
+    background: #2ecc71;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 2rem;
+    box-shadow: 0 2px 8px rgba(44, 62, 80, 0.08);
+}
+.navbar-brand {
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+.navbar nav ul {
+    list-style: none;
+    display: flex;
+    gap: 2rem;
+    margin: 0;
+    padding: 0;
+}
+.navbar nav ul li a {
+    color: #fff;
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.2s;
+}
+.navbar nav ul li a:hover {
+    color: #145a32;
+}
+
+.hero {
+    background: linear-gradient(90deg, #2ecc71 0%, #27ae60 100%);
+    color: #fff;
+    padding: 2.5rem 0 2rem 0;
+    text-align: center;
+    margin-bottom: 2rem;
+    box-shadow: 0 2px 8px rgba(44, 62, 80, 0.08);
+}
+.hero h1 {
+    font-size: 2.5rem;
+    margin-bottom: 0.5rem;
+}
+.hero p {
+    font-size: 1.2rem;
+    margin-top: 0;
+}
+
+.dashboard-main {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+}
+.card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 2rem;
+}
+.dashboard-card {
+    background: #fff;
+    border-radius: 18px;
+    box-shadow: 0 4px 16px rgba(44, 62, 80, 0.10);
+    padding: 2rem 1.5rem 1.5rem 1.5rem;
+    text-align: center;
+    transition: box-shadow 0.2s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.dashboard-card img {
+    width: 72px;
+    height: 72px;
+    margin-bottom: 1rem;
+}
+.dashboard-card h2 {
+    font-size: 1.3rem;
+    margin-bottom: 0.5rem;
+}
+.dashboard-card p {
+    font-size: 1rem;
+    color: #555;
+    margin-bottom: 1.2rem;
+}
+.card-btn {
+    background: #2ecc71;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 0.6rem 1.2rem;
+    font-size: 1rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: background 0.2s;
+    cursor: pointer;
+}
+.card-btn:hover {
+    background: #145a32;
+}
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
 
 body {

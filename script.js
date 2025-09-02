@@ -72,7 +72,21 @@ loginForm.addEventListener('submit', async (e) => {
     const res = await postData(`${API_BASE}/verify-otp`, { email, otp });
     if (res.message === 'OTP verified') {
         localStorage.setItem('userEmail', email);
-        window.location.href = 'dashboard.html';
+        // Fetch user role from backend (GET request)
+        const userRes = await fetch(`${API_BASE}/user?email=${encodeURIComponent(email)}`)
+            .then(r => r.json());
+        if (userRes && userRes.user && userRes.user.role) {
+            localStorage.setItem('userRole', userRes.user.role);
+            if (userRes.user.role === 'student') {
+                window.location.href = 'student_dashboard.html';
+            } else if (userRes.user.role === 'teacher') {
+                window.location.href = 'teacher_dashboard.html';
+            } else {
+                window.location.href = 'dashboard.html';
+            }
+        } else {
+            window.location.href = 'dashboard.html';
+        }
     } else {
         alert(res.message || 'OTP verification failed.');
     }
@@ -82,6 +96,7 @@ signupForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = document.getElementById('signup-email').value;
     const username = document.getElementById('signup-username').value;
+    const role = document.getElementById('signup-role').value;
     const otp = document.getElementById('signup-otp').value;
     let profileIcon = '';
     const iconInput = document.getElementById('signup-icon');
@@ -97,13 +112,24 @@ signupForm.addEventListener('submit', async (e) => {
         alert('Please enter a valid 6-digit OTP.');
         return;
     }
+    if (!role) {
+        alert('Please select a role.');
+        return;
+    }
     const res = await postData(`${API_BASE}/verify-otp`, { email, otp });
     if (res.message === 'OTP verified') {
-        // Now create user with username and icon
-        const userRes = await postData(`${API_BASE}/user`, { email, username, profileIcon });
+        // Now create user with username, icon, and role
+        const userRes = await postData(`${API_BASE}/user`, { email, username, profileIcon, role });
         if (userRes.user) {
             localStorage.setItem('userEmail', email);
-            window.location.href = 'dashboard.html';
+            localStorage.setItem('userRole', role);
+            if (role === 'student') {
+                window.location.href = 'student_dashboard.html';
+            } else if (role === 'teacher') {
+                window.location.href = 'teacher_dashboard.html';
+            } else {
+                window.location.href = 'dashboard.html';
+            }
         } else {
             alert(userRes.message || 'Signup failed.');
         }

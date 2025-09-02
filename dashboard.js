@@ -1,3 +1,30 @@
+// List all teachers or students for chat
+async function listUsersForRole() {
+    if (!myRole) return;
+    let roleToList = myRole === 'teacher' ? 'student' : 'teacher';
+    const res = await fetch(`${API_BASE}/users-by-role?role=${roleToList}`);
+    if (res.status !== 200) return;
+    const data = await res.json();
+    const userListDiv = document.createElement('div');
+    userListDiv.style.margin = '1em 0';
+    userListDiv.innerHTML = `<b>${myRole === 'teacher' ? 'Students' : 'Teachers'}:</b>`;
+    data.users.forEach(u => {
+        if (u.email === userEmail) return;
+        const btn = document.createElement('button');
+        btn.textContent = u.username;
+        btn.style.margin = '0 0.5em 0.5em 0';
+        btn.onclick = async () => {
+            await fetch(`${API_BASE}/chats`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ users: [userEmail, u.email] })
+            });
+            await fetchChats();
+        };
+        userListDiv.appendChild(btn);
+    });
+    document.querySelector('.main-content').insertBefore(userListDiv, document.getElementById('messages'));
+}
 // --- Real backend integration with E2E encryption ---
 const API_BASE = 'http://localhost:5000/api';
 
@@ -12,12 +39,14 @@ if (!userEmail) {
 
 let myUsername = null;
 let myProfileIcon = null;
-// Fetch and show user's username and icon
+let myRole = null;
+// Fetch and show user's username, icon, and role
 async function fetchMyProfile() {
     const res = await fetch(`${API_BASE}/user?email=${encodeURIComponent(userEmail)}`);
     const data = await res.json();
     myUsername = data.user.username;
     myProfileIcon = data.user.profileIcon;
+    myRole = data.user.role;
     document.getElementById('my-username').textContent = myUsername;
     if (myProfileIcon) document.getElementById('my-profile-icon').src = myProfileIcon;
     else document.getElementById('my-profile-icon').src = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(myUsername);
@@ -201,7 +230,9 @@ logoutBtn.addEventListener('click', () => {
 
 
 // Initial load
-fetchMyProfile();
-fetchChats().then(() => {
-    if (chats.length) selectChat(chats[0]._id);
+fetchMyProfile().then(() => {
+    listUsersForRole();
+    fetchChats().then(() => {
+        if (chats.length) selectChat(chats[0]._id);
+    });
 });

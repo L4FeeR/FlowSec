@@ -36,6 +36,14 @@
                 <label for="signup-icon">Profile Icon (optional)</label>
                 <input type="file" id="signup-icon" name="signup-icon" accept="image/*">
             </div>
+            <div class="input-group">
+                <label for="signup-role">Role</label>
+                <select id="signup-role" name="signup-role" required>
+                    <option value="">Select role</option>
+                    <option value="student">Student</option>
+                    <option value="teacher">Teacher</option>
+                </select>
+            </div>
             <button type="button" id="signup-send-otp">Send OTP</button>
             <div class="input-group" id="signup-otp-group" style="display:none;">
                 <label for="signup-otp">Enter OTP</label>

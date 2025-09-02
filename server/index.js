@@ -14,8 +14,26 @@ import Message from './models/Message.js';
 dotenv.config();
 
 const app = express();
-app.use(express.json({ limit: '10mb' }));
 app.use(cors());
+
+// Create or get chat between two users
+app.post('/api/chat', async (req, res) => {
+    const { userA, userB } = req.body;
+    if (!userA || !userB) return res.status(400).json({ message: 'Both userA and userB required' });
+    let chat = await Chat.findOne({ users: { $all: [userA, userB], $size: 2 }, chatType: 'private' });
+    if (!chat) {
+        chat = await Chat.create({ users: [userA, userB], chatType: 'private' });
+    }
+    res.json({ chat });
+});
+
+app.get('/api/users-by-role', async (req, res) => {
+    const { role } = req.query;
+    if (!role) return res.status(400).json({ message: 'Role required' });
+    const users = await User.find({ role });
+    res.json({ users });
+});
+app.use(express.json({ limit: '10mb' }));
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // Multer setup for file uploads
@@ -95,11 +113,11 @@ app.post('/api/verify-otp', async (req, res) => {
 
 // Create user (signup)
 app.post('/api/user', async (req, res) => {
-    const { email, username, profileIcon } = req.body;
-    if (!email || !username) return res.status(400).json({ message: 'Email and username required' });
+    const { email, username, profileIcon, role } = req.body;
+    if (!email || !username || !role) return res.status(400).json({ message: 'Email, username, and role required' });
     let user = await User.findOne({ $or: [ { email }, { username } ] });
     if (user) return res.status(400).json({ message: 'Email or username already exists' });
-    user = await User.create({ email, username, profileIcon });
+    user = await User.create({ email, username, profileIcon, role });
     res.json({ user });
 });
 
@@ -180,3 +198,26 @@ app.get('/api/files/:filename', (req, res) => {
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+// REST API for chat messages
+app.get('/api/messages', async (req, res) => {
+    const { chatId } = req.query;
+    if (!chatId) return res.status(400).json({ message: 'chatId required' });
+    const messages = await Message.find({ chatId }).sort({ createdAt: 1 });
+    res.json({ messages });
+});
+
+app.post('/api/messages', async (req, res) => {
+    const { chatId, sender, receiver, content, file } = req.body;
+    if (!chatId || !sender || !receiver || !content) {
+        return res.status(400).json({ message: 'Missing required fields' });
+    }
+    const message = await Message.create({
+        chatId,
+        sender,
+        receiver,
+        content,
+        file
+    });
+    res.json({ message });
+});
