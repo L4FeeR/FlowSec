@@ -9,9 +9,15 @@ import fs from 'fs';
 import User from './models/User.js';
 import Chat from './models/Chat.js';
 import Message from './models/Message.js';
+import VaultFile from './models/VaultFile.js';
+import VaultLink from './models/VaultLink.js';
+import SecurityScanner from './SecurityScanner.js';
 
 // Load env variables
 dotenv.config();
+
+// Initialize Security Scanner
+const securityScanner = new SecurityScanner(process.env.VIRUSTOTAL_API_KEY);
 
 const app = express();
 app.use(express.json({ limit: '10mb' }));
@@ -89,6 +95,147 @@ app.post('/api/verify-otp', async (req, res) => {
 });
 
 
+// --- Vault Security API ---
+
+// Get all vault files for user
+app.get('/api/vault/files', async (req, res) => {
+    try {
+        const { userId } = req.query;
+        if (!userId) return res.status(400).json({ message: 'User ID required' });
+        
+        const files = await VaultFile.findByUser(userId);
+        res.json({ files });
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching vault files', error: error.message });
+    }
+});
+
+// Get all vault links for user
+app.get('/api/vault/links', async (req, res) => {
+    try {
+        const { userId } = req.query;
+        if (!userId) return res.status(400).json({ message: 'User ID required' });
+        
+        const links = await VaultLink.findByUser(userId);
+        res.json({ links });
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching vault links', error: error.message });
+    }
+});
+
+// Get vault statistics
+app.get('/api/vault/stats', async (req, res) => {
+    try {
+        const { userId } = req.query;
+        if (!userId) return res.status(400).json({ message: 'User ID required' });
+        
+        const [fileStats, linkStats] = await Promise.all([
+            VaultFile.getStats(userId),
+            VaultLink.getStats(userId)
+        ]);
+        
+        res.json({ 
+            files: fileStats,
+            links: linkStats
+        });
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching vault stats', error: error.message });
+    }
+});
+
+// Scan file endpoint
+app.post('/api/vault/scan-file', async (req, res) => {
+    try {
+        const { fileId } = req.body;
+        if (!fileId) return res.status(400).json({ message: 'File ID required' });
+        
+        const vaultFile = await VaultFile.findById(fileId);
+        if (!vaultFile) return res.status(404).json({ message: 'File not found' });
+        
+        // Update status to scanning
+        vaultFile.scanStatus = 'scanning';
+        await vaultFile.save();
+        
+        // Perform scan
+        const filePath = path.join(process.cwd(), 'uploads', vaultFile.filename);
+        const scanResult = await securityScanner.scanFile(filePath);
+        
+        // Update with results
+        await vaultFile.updateScanResults(scanResult);
+        
+        res.json({ message: 'File scanned successfully', result: scanResult });
+    } catch (error) {
+        res.status(500).json({ message: 'Error scanning file', error: error.message });
+    }
+});
+
+// Scan URL endpoint
+app.post('/api/vault/scan-url', async (req, res) => {
+    try {
+        const { url, userId, recipient, chatId } = req.body;
+        if (!url || !userId) return res.status(400).json({ message: 'URL and user ID required' });
+        
+        // Create vault link entry
+        const urlHash = await securityScanner.calculateHash(url);
+        const domain = new URL(url).hostname;
+        
+        const vaultLink = await VaultLink.create({
+            userId,
+            url,
+            urlHash,
+            domain,
+            recipient: recipient || 'unknown',
+            chatId: chatId || 'unknown',
+            scanStatus: 'scanning'
+        });
+        
+        // Perform scan
+        const scanResult = await securityScanner.scanURL(url);
+        
+        // Update with results
+        await vaultLink.updateScanResults(scanResult);
+        
+        res.json({ message: 'URL scanned successfully', result: scanResult });
+    } catch (error) {
+        res.status(500).json({ message: 'Error scanning URL', error: error.message });
+    }
+});
+
+// Quarantine file
+app.post('/api/vault/quarantine', async (req, res) => {
+    try {
+        const { fileId } = req.body;
+        if (!fileId) return res.status(400).json({ message: 'File ID required' });
+        
+        const vaultFile = await VaultFile.findById(fileId);
+        if (!vaultFile) return res.status(404).json({ message: 'File not found' });
+        
+        await vaultFile.quarantine();
+        
+        res.json({ message: 'File quarantined successfully' });
+    } catch (error) {
+        res.status(500).json({ message: 'Error quarantining file', error: error.message });
+    }
+});
+
+// Block domain
+app.post('/api/vault/block-domain', async (req, res) => {
+    try {
+        const { linkId } = req.body;
+        if (!linkId) return res.status(400).json({ message: 'Link ID required' });
+        
+        const vaultLink = await VaultLink.findById(linkId);
+        if (!vaultLink) return res.status(404).json({ message: 'Link not found' });
+        
+        await vaultLink.blockDomain();
+        
+        res.json({ message: 'Domain blocked successfully' });
+    } catch (error) {
+        res.status(500).json({ message: 'Error blocking domain', error: error.message });
+    }
+});
+
+
 // --- Messenger API ---
 
 
@@ -158,7 +305,10 @@ app.get('/api/messages', async (req, res) => {
 app.post('/api/messages', upload.single('file'), async (req, res) => {
     const { chatId, sender, encrypted } = req.body;
     if (!chatId || !sender || !encrypted) return res.status(400).json({ message: 'chatId, sender, encrypted required' });
+    
     let file = undefined;
+    let vaultFileId = null;
+    
     if (req.file) {
         file = {
             filename: req.file.filename,
@@ -166,8 +316,76 @@ app.post('/api/messages', upload.single('file'), async (req, res) => {
             mimetype: req.file.mimetype,
             size: req.file.size
         };
+        
+        // Create vault file entry for security scanning
+        try {
+            const filePath = path.join(process.cwd(), 'uploads', req.file.filename);
+            const fileHash = await securityScanner.calculateFileHash(filePath);
+            
+            const vaultFile = await VaultFile.create({
+                userId: sender,
+                filename: req.file.filename,
+                originalName: req.file.originalname,
+                fileType: req.file.mimetype,
+                fileSize: req.file.size,
+                fileHash,
+                recipient: 'chat-recipient', // You can extract this from chat participants
+                chatId,
+                scanStatus: 'pending'
+            });
+            
+            vaultFileId = vaultFile._id;
+            
+            // Start background scan (don't wait for completion)
+            securityScanner.scanFile(filePath)
+                .then(scanResult => vaultFile.updateScanResults(scanResult))
+                .catch(error => {
+                    console.error('Background file scan failed:', error);
+                    vaultFile.scanStatus = 'error';
+                    vaultFile.save();
+                });
+                
+        } catch (error) {
+            console.error('Error creating vault file entry:', error);
+        }
     }
-    const message = await Message.create({ chatId, sender, encrypted, file });
+    
+    // Check for URLs in the encrypted message and scan them
+    try {
+        // Note: This is a basic URL detection - in real implementation,
+        // you might want to decrypt the message first or scan after decryption
+        const urlRegex = /(https?:\/\/[^\s]+)/g;
+        const urls = encrypted.match(urlRegex);
+        
+        if (urls && urls.length > 0) {
+            // Scan URLs in background
+            urls.forEach(async (url) => {
+                try {
+                    const urlHash = await securityScanner.calculateHash(url);
+                    const domain = new URL(url).hostname;
+                    
+                    const vaultLink = await VaultLink.create({
+                        userId: sender,
+                        url,
+                        urlHash,
+                        domain,
+                        recipient: 'chat-recipient',
+                        chatId,
+                        scanStatus: 'scanning'
+                    });
+                    
+                    const scanResult = await securityScanner.scanURL(url);
+                    await vaultLink.updateScanResults(scanResult);
+                } catch (error) {
+                    console.error('Background URL scan failed:', error);
+                }
+            });
+        }
+    } catch (error) {
+        console.error('Error scanning URLs in message:', error);
+    }
+    
+    const message = await Message.create({ chatId, sender, encrypted, file, vaultFileId });
     res.json({ message });
 });
 

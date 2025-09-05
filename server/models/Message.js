@@ -10,6 +10,7 @@ const messageSchema = new mongoose.Schema({
         mimetype: String,
         size: Number
     },
+    vaultFileId: { type: mongoose.Schema.Types.ObjectId, ref: 'VaultFile' }, // Reference to vault file for security tracking
     createdAt: { type: Date, default: Date.now }
 });
 
