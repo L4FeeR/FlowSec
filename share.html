@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Share Files - FlowSec</title>
+    <link rel="stylesheet" href="share-style.css">
+</head>
+<body>
+    <div class="share-container">
+        <aside class="friends-sidebar">
+            <div class="friends-header">
+                <h2>My Friends</h2>
+                <div class="search-box">
+                    <input type="text" class="search-friends" id="search-friends" placeholder="Search friends...">
+                </div>
+            </div>
+            <div class="friends-list" id="friends-list">
+                <!-- Friends will be populated here -->
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <div class="chat-header">
+                <div class="current-friend">
+                    <div class="friend-avatar" id="current-friend-avatar"></div>
+                    <div class="friend-details">
+                        <h3 id="current-friend-name">Select a user</h3>
+                        <span id="current-friend-email" class="friend-email"></span>
+                        <span id="current-friend-id" class="friend-id"></span>
+                    </div>
+                </div>
+                <button onclick="window.location.href='dashboard.html'" class="nav-button">Back to Dashboard</button>
+            </div>
+
+            <div class="file-history" id="file-history">
+                <!-- File history will be populated here -->
+            </div>
+
+            <div class="progress-container" id="progress-container">
+                <div class="progress-bar-outer">
+                    <div class="progress-bar" id="progress-bar">
+                        <span class="progress-percentage" id="progress-percentage">0%</span>
+                    </div>
+                </div>
+                <div class="progress-text" id="progress-text"></div>
+            </div>
+
+            <div class="file-upload-section">
+                <form class="upload-form" id="upload-form">
+                    <div class="file-input-wrapper">
+                        <label for="file-input" class="file-input-label">
+                            <div class="upload-icon">📁</div>
+                            <span>Choose files to upload</span>
+                            <small>or drag and drop them here</small>
+                        </label>
+                        <input type="file" id="file-input" class="file-input" multiple>
+                    </div>
+                    <button type="submit" class="upload-button" disabled>
+                        <span class="upload-icon">📤</span>
+                        <span>Upload & Share Files</span>
+                    </button>
+                </form>
+                <div class="upload-status" id="upload-status"></div>
+            </div>
+        </main>
+    </div>
+    <script src="share.js"></script>
+</body>
+</html>

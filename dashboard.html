@@ -3,44 +3,99 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Secure Messenger Dashboard</title>
+    <title>FlowSec Dashboard</title>
     <link rel="stylesheet" href="dashboard.css">
 </head>
 <body>
     <div class="dashboard-container">
         <aside class="sidebar">
-            <div class="sidebar-header">
-                <h2>Chats</h2>
-                <button id="logout-btn" title="Logout">⎋</button>
+            <div class="user-profile">
+                <div class="user-avatar">
+                    <img id="profile-picture" src="" alt="Profile Picture">
+                </div>
+                <div class="user-info">
+                    <h3 id="dashboard-username">Loading...</h3>
+                    <p id="user-id" class="user-id">Loading...</p>
+                    <p id="user-email" class="user-email"></p>
+                </div>
             </div>
-            <ul class="chat-list" id="chat-list">
-                <!-- Chats will be listed here -->
-            </ul>
-            <button id="new-chat-btn">+ New Chat</button>
+            
+            <nav class="main-nav">
+                <button onclick="window.location.href='share.html'" class="nav-button">
+                    <span>📤 Share Files</span>
+                </button>
+                <button onclick="window.location.href='chat.html'" class="nav-button">
+                    <span>💬 Chat</span>
+                </button>
+                <button onclick="logout()" class="nav-button">
+                    <span>🚪 Logout</span>
+                </button>
+            </nav>
         </aside>
+
         <main class="main-content">
-            <header class="chat-header">
-                <div id="chat-title">Select a chat</div>
-                <label class="file-upload-label">
-                    <input type="file" id="file-input" hidden>
-                    <span title="Send File">📎</span>
-                </label>
-            </header>
-            <div class="user-id-bar">
-                <img id="my-profile-icon" src="" alt="Profile" style="width:32px;height:32px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:0.5em;">
-                <span>Your Username: <b id="my-username">...</b></span>
-                <input type="text" id="search-username" placeholder="Enter Username to chat" style="margin-left:1em;">
-                <button id="search-username-btn">Start Chat</button>
+            <div class="content-header">
+                <h2>Welcome to FlowSec</h2>
             </div>
-            <div class="messages" id="messages">
-                <!-- Messages will appear here -->
-            </div>
-            <form id="message-form" class="message-form">
-                <input type="text" id="message-input" placeholder="Type a message..." autocomplete="off" required>
-                <button type="submit">Send</button>
-            </form>
+
+            <!-- Central Friends Section -->
+            <section class="friends-section">
+                <div class="section-header">
+                    <h2>My Friends</h2>
+                    <button class="add-friend-btn" onclick="openAddFriendModal()">
+                        <span>➕ Add Friend</span>
+                    </button>
+                </div>
+                <div class="friends-grid" id="friends-list">
+                    <!-- Friends will be populated here -->
+                </div>
+            </section>
         </main>
+
+        <!-- Right Sidebar -->
+        <aside class="right-sidebar">
+            <div class="dashboard-stats">
+                <div class="stat-card">
+                    <h3>Files Shared</h3>
+                    <p id="files-count">0</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Friends</h3>
+                    <p id="friends-count">0</p>
+                </div>
+            </div>
+
+            <section class="recent-activity">
+                <h3>Recent Activity</h3>
+                <div id="activity-list" class="activity-list">
+                    <!-- Activity items will be populated here -->
+                </div>
+            </section>
+        </aside>
+
+        <!-- Add Friend Modal -->
+        <div id="add-friend-modal" class="add-friend-modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Add Friends</h3>
+                    <button class="close-modal" onclick="closeAddFriendModal()">&times;</button>
+                </div>
+                <div class="friend-search-container">
+                    <div class="search-box">
+                        <input type="text" 
+                               id="friend-search" 
+                               class="friend-search-input" 
+                               placeholder="Search users by name or email"
+                               oninput="searchUsers(this.value)">
+                    </div>
+                    <div id="search-results" class="search-results">
+                        <!-- User cards will be populated here -->
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
+
     <script src="dashboard.js"></script>
 </body>
 </html>
