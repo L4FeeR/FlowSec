@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug File Share</title>
+</head>
+<body>
+    <h1>Debug File Share</h1>
+    <div id="debug-info"></div>
+    <button onclick="setDemoUser()">Set Demo User</button>
+    <button onclick="testAPI()">Test API</button>
+    <button onclick="goToFileShare()">Go to File Share</button>
+
+    <script>
+        function updateDebug() {
+            const userEmail = localStorage.getItem('userEmail');
+            const user = localStorage.getItem('user');
+            document.getElementById('debug-info').innerHTML = `
+                <p><strong>UserEmail:</strong> ${userEmail || 'Not set'}</p>
+                <p><strong>User Data:</strong> ${user || 'Not set'}</p>
+            `;
+        }
+
+        function setDemoUser() {
+            localStorage.setItem('userEmail', 'demo@flowsec.com');
+            localStorage.setItem('user', JSON.stringify({
+                email: 'demo@flowsec.com',
+                username: 'Demo User',
+                publicKey: null
+            }));
+            updateDebug();
+        }
+
+        async function testAPI() {
+            try {
+                const userEmail = localStorage.getItem('userEmail');
+                if (!userEmail) {
+                    alert('Set demo user first');
+                    return;
+                }
+                
+                const response = await fetch(`http://localhost:5000/api/user?email=${encodeURIComponent(userEmail)}`);
+                const data = await response.json();
+                alert('API Response: ' + JSON.stringify(data));
+            } catch (error) {
+                alert('API Error: ' + error.message);
+            }
+        }
+
+        function goToFileShare() {
+            window.location.href = 'file-share.html';
+        }
+
+        // Update debug info on load
+        updateDebug();
+    </script>
+</body>
+</html>

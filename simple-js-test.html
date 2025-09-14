@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple JS Test</title>
+</head>
+<body>
+    <h1>JavaScript Test</h1>
+    <div id="test-output">Loading...</div>
+    
+    <script>
+        console.log('Simple script loaded');
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('DOM loaded');
+            document.getElementById('test-output').innerHTML = 'JavaScript is working!';
+            
+            // Test API call
+            fetch('http://localhost:5000/api/user?email=demo@flowsec.com')
+                .then(res => {
+                    console.log('API Response:', res.status);
+                    document.getElementById('test-output').innerHTML += '<br>API Status: ' + res.status;
+                })
+                .catch(err => {
+                    console.log('API Error:', err);
+                    document.getElementById('test-output').innerHTML += '<br>API Error: ' + err.message;
+                });
+        });
+    </script>
+</body>
+</html>
