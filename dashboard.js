@@ -1,207 +1,251 @@
-// --- Real backend integration with E2E encryption ---
 const API_BASE = 'http://localhost:5000/api';
 
-
+// Global state
 let userEmail = localStorage.getItem('userEmail');
+let userId = localStorage.getItem('userId');
+let username = localStorage.getItem('username');
+
+// Check if user is logged in
 if (!userEmail) {
-    userEmail = prompt('Enter your email to continue:');
-    if (userEmail) localStorage.setItem('userEmail', userEmail);
-    else window.location.href = 'index.html';
+    window.location.href = 'index.html';
 }
 
-
-let myUsername = null;
-let myProfileIcon = null;
-// Fetch and show user's username and icon
-async function fetchMyProfile() {
-    const res = await fetch(`${API_BASE}/user?email=${encodeURIComponent(userEmail)}`);
-    const data = await res.json();
-    myUsername = data.user.username;
-    myProfileIcon = data.user.profileIcon;
-    document.getElementById('my-username').textContent = myUsername;
-    if (myProfileIcon) document.getElementById('my-profile-icon').src = myProfileIcon;
-    else document.getElementById('my-profile-icon').src = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(myUsername);
-}
-
-const chatList = document.getElementById('chat-list');
-const messagesDiv = document.getElementById('messages');
-const chatTitle = document.getElementById('chat-title');
-const messageForm = document.getElementById('message-form');
-const messageInput = document.getElementById('message-input');
-const fileInput = document.getElementById('file-input');
-const newChatBtn = document.getElementById('new-chat-btn');
-const logoutBtn = document.getElementById('logout-btn');
-
-let chats = [];
-let currentChatId = null;
-let chatUsers = {}; // chatId -> [user emails]
-
-// --- E2E encryption helpers (AES-GCM, per chat) ---
-async function getChatKey(chatId) {
-    // For demo: store key in localStorage per chat
-    let key = localStorage.getItem('chatKey-' + chatId);
-    if (!key) {
-        key = await window.crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']);
-        const jwk = await window.crypto.subtle.exportKey('jwk', key);
-        localStorage.setItem('chatKey-' + chatId, JSON.stringify(jwk));
-        return key;
-    }
-    return await window.crypto.subtle.importKey('jwk', JSON.parse(key), { name: 'AES-GCM' }, true, ['encrypt', 'decrypt']);
-}
-
-async function encryptMessage(chatId, text) {
-    const key = await getChatKey(chatId);
-    const iv = window.crypto.getRandomValues(new Uint8Array(12));
-    const enc = new TextEncoder().encode(text);
-    const ciphertext = await window.crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc);
-    return btoa(String.fromCharCode(...iv) + String.fromCharCode(...new Uint8Array(ciphertext)));
-}
-
-async function decryptMessage(chatId, encrypted) {
-    const key = await getChatKey(chatId);
-    const data = atob(encrypted);
-    const iv = Uint8Array.from(data.slice(0, 12), c => c.charCodeAt(0));
-    const ct = Uint8Array.from(data.slice(12), c => c.charCodeAt(0));
-    const dec = await window.crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
-    return new TextDecoder().decode(dec);
-}
-
-async function fetchChats() {
-    const res = await fetch(`${API_BASE}/chats?email=${encodeURIComponent(userEmail)}`);
-    const data = await res.json();
-    chats = data.chats;
-    renderChatList();
-}
-
-async function fetchMessages(chatId) {
-    const res = await fetch(`${API_BASE}/messages?chatId=${chatId}`);
-    const data = await res.json();
-    return data.messages;
-}
-
-async function renderChatList() {
-    chatList.innerHTML = '';
-    for (const chat of chats) {
-        const li = document.createElement('li');
-        const otherEmails = chat.users.filter(u => u !== userEmail);
-        let display = '';
-        if (otherEmails.length === 1) {
-            // Fetch username and icon for the other user
-            const res = await fetch(`${API_BASE}/user?email=${encodeURIComponent(otherEmails[0])}`);
-            if (res.status === 200) {
-                const data = await res.json();
-                const icon = data.user.profileIcon || `https://ui-avatars.com/api/?name=${encodeURIComponent(data.user.username)}`;
-                display = `<img src="${icon}" style="width:24px;height:24px;border-radius:50%;vertical-align:middle;object-fit:cover;"> <span style="vertical-align:middle;">${data.user.username}</span>`;
-            } else {
-                display = otherEmails[0];
-            }
-        } else {
-            display = otherEmails.join(', ') || myUsername;
-        }
-        li.innerHTML = display;
-        li.className = chat._id === currentChatId ? 'selected' : '';
-        li.onclick = () => selectChat(chat._id);
-        chatList.appendChild(li);
-        chatUsers[chat._id] = chat.users;
-    }
-}
-
-async function renderMessages() {
-    messagesDiv.innerHTML = '';
-    if (!currentChatId) return;
-    const msgs = await fetchMessages(currentChatId);
-    for (const msg of msgs) {
-        const div = document.createElement('div');
-        div.className = 'message' + (msg.sender === userEmail ? ' me' : '');
-        let text = '';
-        try {
-            text = await decryptMessage(currentChatId, msg.encrypted);
-        } catch {
-            text = '[Encrypted]';
-        }
-        if (msg.file && msg.file.filename) {
-            div.innerHTML = `<span>${msg.sender === userEmail ? 'You sent a file:' : 'File received:'}</span><br><a class="file-link" href="http://localhost:5000/api/files/${msg.file.filename}" download>${msg.file.originalname}</a><br>${text}`;
-        } else {
-            div.textContent = text;
-        }
-        messagesDiv.appendChild(div);
-    }
-    messagesDiv.scrollTop = messagesDiv.scrollHeight;
-}
-
-async function selectChat(id) {
-    currentChatId = id;
-    const chat = chats.find(c => c._id === id);
-    const otherUsers = chat ? chat.users.filter(u => u !== userEmail) : [];
-    chatTitle.textContent = otherUsers.join(', ') || userEmail;
-    renderChatList();
-    await renderMessages();
-}
-
-messageForm.addEventListener('submit', async e => {
-    e.preventDefault();
-    if (!currentChatId) return;
-    const text = messageInput.value;
-    const encrypted = await encryptMessage(currentChatId, text);
-    await fetch(`${API_BASE}/messages`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chatId: currentChatId, sender: userEmail, encrypted })
-    });
-    messageInput.value = '';
-    await renderMessages();
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadUserProfile();
+    await fetchFriends();
+    await fetchUserFiles();
 });
 
-fileInput.addEventListener('change', async e => {
-    if (!currentChatId || !fileInput.files.length) return;
-    const file = fileInput.files[0];
-    const text = prompt('Add a message (optional):') || '';
-    const encrypted = await encryptMessage(currentChatId, text);
-    const formData = new FormData();
-    formData.append('chatId', currentChatId);
-    formData.append('sender', userEmail);
-    formData.append('encrypted', encrypted);
-    formData.append('file', file);
-    await fetch(`${API_BASE}/messages`, {
-        method: 'POST',
-        body: formData
-    });
-    fileInput.value = '';
-    await renderMessages();
-});
+async function loadUserProfile() {
+    try {
+        const res = await fetch(`${API_BASE}/user?email=${encodeURIComponent(userEmail)}`);
+        if (!res.ok) throw new Error('Failed to fetch user data');
+        
+        const data = await res.json();
+        const user = data.user;
 
+        username = user.username;
+        userId = user._id;
 
+        localStorage.setItem('username', username);
+        localStorage.setItem('userId', userId);
 
-// Start chat by searching username
-document.getElementById('search-username-btn').addEventListener('click', async (e) => {
-    e.preventDefault();
-    const username = document.getElementById('search-username').value.trim();
-    if (!username || username === myUsername) return;
-    const res = await fetch(`${API_BASE}/user-by-username?username=${encodeURIComponent(username)}`);
-    if (res.status !== 200) {
-        alert('User not found');
+        document.getElementById('dashboard-username').textContent = username;
+        document.getElementById('user-id').textContent = `ID: ${userId}`;
+        document.getElementById('user-email').textContent = userEmail;
+        document.getElementById('profile-picture').src = user.profileIcon || `https://ui-avatars.com/api/?name=${encodeURIComponent(username)}`;
+        document.getElementById('files-count').textContent = user.stats?.files || 0;
+        document.getElementById('friends-count').textContent = user.stats?.friends || 0;
+        
+    } catch (error) {
+        console.error('Error loading profile:', error);
+        document.getElementById('dashboard-username').textContent = 'Error loading profile';
+    }
+}
+
+async function fetchFriends() {
+    try {
+        const res = await fetch(`${API_BASE}/friends?email=${encodeURIComponent(userEmail)}`);
+        if (!res.ok) throw new Error('Failed to fetch friends');
+        
+        const data = await res.json();
+        const friendsList = document.getElementById('friends-list');
+        
+        if (!friendsList) return;
+        
+        friendsList.innerHTML = ''; 
+        
+        if (!data.friends || data.friends.length === 0) {
+            friendsList.innerHTML = `
+                <div class="no-friends-message">
+                    <p>You haven't added any friends yet</p>
+                </div>
+            `;
+            return;
+        }
+
+        data.friends.forEach(friend => {
+            const friendCard = document.createElement('div');
+            friendCard.className = 'friend-card';
+            
+            const avatarUrl = friend.profileIcon || `https://ui-avatars.com/api/?name=${encodeURIComponent(friend.username)}`;
+            
+            friendCard.innerHTML = `
+                <img src="${avatarUrl}" alt="${friend.username}" class="friend-avatar">
+                <h3 class="friend-name">${friend.username}</h3>
+                <p class="friend-email">${friend.email}</p>
+                <div class="friend-actions">
+                    <button class="friend-action-btn chat-btn" onclick="startChat('${friend._id}')">
+                        💬 Chat
+                    </button>
+                    <button class="friend-action-btn share-btn" onclick="shareWithFriend('${friend._id}')">
+                        📤 Share
+                    </button>
+                </div>
+            `;
+            
+            friendsList.appendChild(friendCard);
+        });
+        
+    } catch (error) {
+        console.error('Error loading friends:', error);
+    }
+}
+
+async function fetchUserFiles() {
+    const filesList = document.getElementById('activity-list');
+    if (!filesList) return;
+
+    try {
+        const res = await fetch(`${API_BASE}/list-files?email=${encodeURIComponent(userEmail)}`);
+        const data = await res.json();
+        
+        if (data.files && data.files.length) {
+            filesList.innerHTML = data.files.map(file => `
+                <div class="file-item">
+                    <span class="file-name">${file.originalName}</span>
+                </div>
+            `).join('');
+        } else {
+            filesList.innerHTML = '<p class="no-files">No files uploaded yet</p>';
+        }
+    } catch (error) {
+        console.error('Error fetching files:', error);
+        filesList.innerHTML = '<p class="error">Error loading files</p>';
+    }
+}
+
+function openAddFriendModal() {
+    const modal = document.getElementById('add-friend-modal');
+    if (!modal) return;
+    modal.style.display = 'flex';
+    document.getElementById('friend-search').focus();
+}
+
+function closeAddFriendModal() {
+    const modal = document.getElementById('add-friend-modal');
+    if (!modal) return;
+    modal.style.display = 'none';
+    document.getElementById('friend-search').value = '';
+    document.getElementById('search-results').innerHTML = '';
+}
+
+let searchTimeout = null;
+function searchUsers(query) {
+    if (searchTimeout) {
+        clearTimeout(searchTimeout);
+    }
+
+    if (!query.trim()) {
+        document.getElementById('search-results').innerHTML = '';
         return;
     }
-    const data = await res.json();
-    const otherEmail = data.user.email;
-    // Create chat if not exists
-    await fetch(`${API_BASE}/chats`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ users: [userEmail, otherEmail] })
+
+    searchTimeout = setTimeout(async () => {
+        try {
+            const response = await fetch(`${API_BASE}/search-users?query=${encodeURIComponent(query)}`);
+            if (!response.ok) {
+                throw new Error('Failed to search users');
+            }
+            const data = await response.json();
+            displaySearchResults(data.users);
+        } catch (error) {
+            console.error('Error searching users:', error);
+            document.getElementById('search-results').innerHTML = `
+                <div class="error-message">
+                    <p>Error searching users. Please try again.</p>
+                </div>
+            `;
+        }
+    }, 300);
+}
+
+function displaySearchResults(users) {
+    const searchResults = document.getElementById('search-results');
+    if (!searchResults) return;
+
+    searchResults.innerHTML = '';
+
+    if (!users || users.length === 0) {
+        searchResults.innerHTML = `
+            <div class="no-results">
+                <p>No users found</p>
+            </div>
+        `;
+        return;
+    }
+
+    users.forEach(user => {
+        if (user._id === userId) return;
+
+        const userCard = document.createElement('div');
+        userCard.className = 'user-card';
+        
+        const avatarUrl = user.profileIcon || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.username)}`;
+        
+        userCard.innerHTML = `
+            <img src="${avatarUrl}" alt="${user.username}" class="user-card-avatar">
+            <div class="user-card-info">
+                <h4 class="user-card-name">${user.username}</h4>
+                <p class="user-card-email">${user.email}</p>
+            </div>
+            <button 
+                onclick="addFriend('${user._id}')" 
+                class="add-friend-action"
+                id="add-friend-${user._id}">
+                Add Friend
+            </button>
+        `;
+        
+        searchResults.appendChild(userCard);
     });
-    await fetchChats();
-});
+}
 
-logoutBtn.addEventListener('click', () => {
-    localStorage.removeItem('userEmail');
+async function addFriend(friendId) {
+    const button = document.getElementById(`add-friend-${friendId}`);
+    if (!button || button.classList.contains('added')) return;
+
+    try {
+        button.textContent = 'Adding...';
+        button.disabled = true;
+
+        const response = await fetch(`${API_BASE}/friends`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                userId: userId,
+                friendId: friendId
+            })
+        });
+
+        const data = await response.json();
+        
+        if (response.ok) {
+            button.textContent = 'Added ✓';
+            button.classList.add('added');
+            await fetchFriends();
+        } else {
+            button.textContent = data.message || 'Failed';
+            button.disabled = false;
+        }
+    } catch (error) {
+        console.error('Error adding friend:', error);
+        button.textContent = 'Failed';
+        button.disabled = false;
+    }
+}
+
+function startChat(friendId) {
+    window.location.href = `chat.html?friend=${friendId}`;
+}
+
+function shareWithFriend(friendId) {
+    window.location.href = `share.html?friend=${friendId}`;
+}
+
+function logout() {
+    localStorage.clear();
     window.location.href = 'index.html';
-});
-
-
-
-// Initial load
-fetchMyProfile();
-fetchChats().then(() => {
-    if (chats.length) selectChat(chats[0]._id);
-});
+}

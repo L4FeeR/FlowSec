@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Create Demo User</title>
+</head>
+<body>
+    <h1>Create Demo User</h1>
+    <button onclick="createDemoUser()">Create Demo User</button>
+    <div id="result"></div>
+
+    <script>
+        async function createDemoUser() {
+            try {
+                // First send OTP
+                const otpResponse = await fetch('http://localhost:5000/api/send-otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: 'demo@flowsec.com' })
+                });
+                
+                if (!otpResponse.ok) {
+                    throw new Error('Failed to send OTP');
+                }
+                
+                // Register user with dummy OTP (server might skip OTP verification in demo mode)
+                const formData = new FormData();
+                formData.append('email', 'demo@flowsec.com');
+                formData.append('username', 'DemoUser');
+                formData.append('otp', '123456');
+                
+                const registerResponse = await fetch('http://localhost:5000/api/register', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await registerResponse.json();
+                document.getElementById('result').innerHTML = JSON.stringify(result, null, 2);
+                
+                if (registerResponse.ok) {
+                    alert('Demo user created successfully!');
+                } else {
+                    alert('Error: ' + result.message);
+                }
+            } catch (error) {
+                document.getElementById('result').innerHTML = 'Error: ' + error.message;
+            }
+        }
+    </script>
+</body>
+</html>

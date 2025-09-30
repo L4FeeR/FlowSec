@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Encrypted File Sharing - FlowSec</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="file-share.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <h1>🔒 FlowSec</h1>
+                    <span class="subtitle">Encrypted File Sharing</span>
+                </div>
+                <nav class="nav-buttons">
+                    <button onclick="window.location.href='dashboard.html'" class="nav-btn">💬 Messages</button>
+                    <button onclick="window.location.href='vault.html'" class="nav-btn">🔐 Vault</button>
+                    <button onclick="logout()" class="nav-btn logout-btn">🚪 Logout</button>
+                </nav>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <aside class="sidebar">
+                <div class="user-info">
+                    <div class="user-avatar" id="user-avatar"></div>
+                    <div class="user-details">
+                        <h3 id="user-name">Loading...</h3>
+                        <span id="user-email"></span>
+                    </div>
+                </div>
+
+                <div class="friends-section">
+                    <div class="section-header">
+                        <h3>Friends</h3>
+                        <button id="add-friend-btn" class="add-btn">➕</button>
+                    </div>
+                    <div class="search-box">
+                        <input type="text" id="search-friends" placeholder="Search friends...">
+                    </div>
+                    <div class="friends-list" id="friends-list">
+                        <!-- Friends will be populated here -->
+                    </div>
+                </div>
+
+                <div class="stats-section">
+                    <h3>Statistics</h3>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <div class="stat-number" id="files-count">0</div>
+                            <div class="stat-label">Files Shared</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-number" id="friends-count">0</div>
+                            <div class="stat-label">Friends</div>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <main class="content-area">
+                <div class="content-header">
+                    <div class="current-context">
+                        <h2 id="current-context-title">Select a friend to share files</h2>
+                        <span id="current-friend-email"></span>
+                    </div>
+                </div>
+
+                <div class="file-upload-section">
+                    <div class="upload-area" id="upload-area">
+                        <div class="upload-icon">📁</div>
+                        <h3>Drop files here or click to browse</h3>
+                        <p>Files will be encrypted before sharing</p>
+                        <input type="file" id="file-input" multiple style="display: none;">
+                        <button id="browse-btn" class="primary-btn">Choose Files</button>
+                    </div>
+                </div>
+
+                <div class="progress-section" id="progress-section" style="display: none;">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progress-fill"></div>
+                        <span class="progress-text" id="progress-text">0%</span>
+                    </div>
+                    <div class="progress-status" id="progress-status">Preparing files...</div>
+                </div>
+
+                <div class="files-section">
+                    <div class="section-tabs">
+                        <button class="tab-btn active" data-tab="shared">Shared with Me</button>
+                        <button class="tab-btn" data-tab="uploaded">My Files</button>
+                    </div>
+
+                    <div class="tab-content" id="shared-files">
+                        <div class="files-list" id="shared-files-list">
+                            <!-- Shared files will be populated here -->
+                        </div>
+                    </div>
+
+                    <div class="tab-content" id="uploaded-files" style="display: none;">
+                        <div class="files-list" id="uploaded-files-list">
+                            <!-- Uploaded files will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Add Friend Modal -->
+    <div id="add-friend-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Add Friend</h3>
+                <button class="close-btn" onclick="closeAddFriendModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="search-user-section">
+                    <input type="text" id="user-search" placeholder="Search by username or email...">
+                    <button id="search-user-btn" class="primary-btn">Search</button>
+                </div>
+                <div class="search-results" id="search-results"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Key Generation Modal -->
+    <div id="key-gen-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>🔐 Generate Encryption Keys</h3>
+            </div>
+            <div class="modal-body">
+                <p>To use encrypted file sharing, you need to generate encryption keys.</p>
+                <p>This is a one-time setup that will enable secure file transfers.</p>
+                <div class="key-gen-actions">
+                    <button id="generate-keys-btn" class="primary-btn">Generate Keys</button>
+                    <button onclick="closeKeyGenModal()" class="secondary-btn">Skip for Now</button>
+                </div>
+                <div id="key-gen-progress" style="display: none;">
+                    <div class="loading-spinner"></div>
+                    <p>Generating encryption keys...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="file-share.js"></script>
+</body>
+</html>

@@ -1,0 +1,500 @@
+:root {
+    --primary: #4a90e2;
+    --secondary: #2c3e50;
+    --background: #f5f6fa;
+    --text: #2c3e50;
+    --border: #e1e8ed;
+    --success: #2ecc71;
+    --error: #e74c3c;
+    --shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+}
+
+body {
+    background: var(--background);
+}
+
+.progress-container {
+    display: none;
+    width: 100%;
+    background-color: white;
+    padding: 1rem;
+    border-radius: 8px;
+    margin: 1rem 0;
+    box-shadow: var(--shadow);
+}
+
+.progress-container.active {
+    display: block;
+}
+
+.progress-bar-outer {
+    width: 100%;
+    height: 20px;
+    background-color: var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    position: relative;
+}
+
+.progress-bar {
+    width: 0%;
+    height: 100%;
+    background-color: var(--primary);
+    transition: width 0.3s ease;
+    position: absolute;
+    left: 0;
+    top: 0;
+}
+
+.progress-text {
+    margin-top: 0.5rem;
+    text-align: center;
+    color: var(--text);
+    font-size: 0.9rem;
+}
+
+.progress-percentage {
+    position: absolute;
+    right: 10px;
+    color: white;
+    font-weight: bold;
+    line-height: 20px;
+    color: var(--text);
+    line-height: 1.6;
+    height: 100vh;
+    overflow: hidden;
+}
+
+/* Main Container */
+.share-container {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    height: 100vh;
+    background: white;
+}
+
+/* Friends Sidebar */
+.friends-sidebar {
+    background: white;
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.friends-header {
+    padding: 20px;
+    border-bottom: 1px solid var(--border);
+    background: white;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.friends-header h2 {
+    color: var(--secondary);
+    font-size: 1.5rem;
+    margin-bottom: 15px;
+}
+
+.search-box {
+    position: relative;
+    margin-bottom: 1rem;
+}
+
+.search-friends {
+    width: 100%;
+    padding: 12px 15px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
+}
+
+.search-friends:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+}
+
+.search-results {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-top: 5px;
+    max-height: 300px;
+    overflow-y: auto;
+    box-shadow: var(--shadow);
+    z-index: 100;
+    display: none;
+}
+
+.search-results.active {
+    display: block;
+}
+
+.search-result-item {
+    padding: 12px 15px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.search-result-item:last-child {
+    border-bottom: none;
+}
+
+.search-result-item:hover {
+    background: #f8fafd;
+}
+
+.friend-details {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.friend-email {
+    font-size: 0.85rem;
+    color: #666;
+}
+
+.friend-id {
+    font-size: 0.75rem;
+    color: #888;
+    font-family: monospace;
+}
+
+/* Upload Button Styling */
+.file-input-label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: #f8fafd;
+    text-align: center;
+}
+
+.file-input-label:hover {
+    border-color: var(--primary);
+    background: #f0f7ff;
+}
+
+.upload-icon {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+}
+
+.file-input-label span {
+    font-size: 1.1rem;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+
+.file-input-label small {
+    color: #666;
+}
+
+.file-input {
+    display: none;
+}
+
+.upload-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 15px 30px;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    width: 100%;
+    margin-top: 1rem;
+}
+
+.upload-button:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.upload-button:not(:disabled):hover {
+    background: #357abd;
+    transform: translateY(-2px);
+}
+
+.friends-list {
+    padding: 15px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.friend-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 15px;
+    margin-bottom: 8px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: white;
+}
+
+.friend-item:hover {
+    background: #f8fafd;
+    transform: translateX(5px);
+}
+
+.friend-item.active {
+    background: var(--primary);
+    color: white;
+}
+
+.friend-avatar {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    background: var(--secondary);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    margin-right: 15px;
+    font-size: 1.2rem;
+}
+
+.friend-info {
+    flex: 1;
+}
+
+.friend-name {
+    font-weight: 600;
+    margin-bottom: 3px;
+}
+
+.last-transfer {
+    font-size: 0.85rem;
+    color: #666;
+}
+
+/* Main Content Area */
+.main-content {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background: #f8fafd;
+}
+
+/* Chat Header */
+.chat-header {
+    padding: 20px 30px;
+    background: white;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.current-friend {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.current-friend h3 {
+    color: var(--secondary);
+    font-size: 1.2rem;
+}
+
+/* File History */
+.file-history {
+    flex: 1;
+    padding: 25px;
+    overflow-y: auto;
+}
+
+.file-item {
+    background: white;
+    border-radius: 12px;
+    padding: 15px 20px;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    box-shadow: var(--shadow);
+    transition: transform 0.2s ease;
+}
+
+.file-item:hover {
+    transform: translateY(-2px);
+}
+
+.file-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 10px;
+    background: var(--primary);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 20px;
+    font-size: 1.5rem;
+}
+
+.file-details {
+    flex: 1;
+}
+
+.file-name {
+    font-weight: 600;
+    color: var(--secondary);
+    margin-bottom: 5px;
+}
+
+.file-meta {
+    font-size: 0.85rem;
+    color: #666;
+}
+
+/* Upload Section */
+.file-upload-section {
+    padding: 20px 30px;
+    background: white;
+    border-top: 1px solid var(--border);
+}
+
+.upload-form {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+
+.file-input-wrapper {
+    flex: 1;
+    position: relative;
+}
+
+.file-input {
+    width: 100%;
+    padding: 15px;
+    border: 2px dashed var(--border);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: #f8fafd;
+}
+
+.file-input:hover {
+    border-color: var(--primary);
+    background: #f0f7ff;
+}
+
+.send-button {
+    padding: 15px 30px;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.send-button:hover {
+    background: #357abd;
+    transform: translateY(-2px);
+}
+
+.upload-status {
+    margin-top: 15px;
+    padding: 15px;
+    border-radius: 8px;
+    display: none;
+    font-weight: 500;
+}
+
+.status-success {
+    background: #d4edda;
+    color: #155724;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.status-error {
+    background: #f8d7da;
+    color: #721c24;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .share-container {
+        grid-template-columns: 1fr;
+    }
+
+    .friends-sidebar {
+        display: none;
+    }
+
+    .friend-item {
+        padding: 10px;
+    }
+
+    .file-upload-section {
+        padding: 15px;
+    }
+
+    .upload-form {
+        flex-direction: column;
+    }
+
+    .send-button {
+        width: 100%;
+    }
+}

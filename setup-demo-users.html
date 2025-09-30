@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Setup Demo Users</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .button { padding: 10px 20px; margin: 5px; background: #007bff; color: white; border: none; cursor: pointer; }
+        .success { color: green; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <h1>Setup Demo Users for FlowSec</h1>
+    <button class="button" onclick="createDemoUsers()">Create Demo Users</button>
+    <button class="button" onclick="listUsers()">List All Users</button>
+    <div id="output"></div>
+
+    <script>
+        const API_BASE = 'http://localhost:5000/api';
+        
+        async function createDemoUsers() {
+            const users = [
+                { email: 'demo@flowsec.com', username: 'DemoUser' },
+                { email: 'alice@example.com', username: 'Alice Smith' },
+                { email: 'bob@example.com', username: 'Bob Johnson' },
+                { email: 'akashkalimuthu4_bcs27@mepcoeng.ac.in', username: 'Akash K' }
+            ];
+
+            document.getElementById('output').innerHTML = '<h3>Creating demo users...</h3>';
+            
+            for (const user of users) {
+                try {
+                    const response = await fetch(`${API_BASE}/user`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            email: user.email,
+                            username: user.username,
+                            profileIcon: '',
+                            publicKey: 'demo-key-' + Date.now() // Dummy public key for demo
+                        })
+                    });
+                    
+                    const result = await response.json();
+                    if (response.ok) {
+                        appendOutput(`✅ Created user: ${user.email}`, 'success');
+                    } else {
+                        appendOutput(`❌ Failed to create ${user.email}: ${result.message}`, 'error');
+                    }
+                } catch (error) {
+                    appendOutput(`❌ Error creating ${user.email}: ${error.message}`, 'error');
+                }
+            }
+        }
+
+        async function listUsers() {
+            try {
+                const response = await fetch(`${API_BASE}/search-users?query=`);
+                const result = await response.json();
+                
+                document.getElementById('output').innerHTML = '<h3>All Users:</h3>';
+                if (result.users && result.users.length > 0) {
+                    result.users.forEach(user => {
+                        appendOutput(`👤 ${user.username} (${user.email})`, 'success');
+                    });
+                } else {
+                    appendOutput('No users found in database', 'error');
+                }
+            } catch (error) {
+                appendOutput(`Error listing users: ${error.message}`, 'error');
+            }
+        }
+
+        function appendOutput(message, type = '') {
+            const output = document.getElementById('output');
+            const div = document.createElement('div');
+            div.className = type;
+            div.textContent = message;
+            output.appendChild(div);
+        }
+    </script>
+</body>
+</html>
