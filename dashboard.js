@@ -38,15 +38,55 @@ let chatUsers = {}; // chatId -> [user emails]
 
 // --- E2E encryption helpers (AES-GCM, per chat) ---
 async function getChatKey(chatId) {
-    // For demo: store key in localStorage per chat
-    let key = localStorage.getItem('chatKey-' + chatId);
-    if (!key) {
-        key = await window.crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']);
+    // Version 2: Deterministic key generation (force regeneration of old random keys)
+    const keyVersion = 'v2';
+    const keyName = `chatKey-${keyVersion}-${chatId}`;
+    
+    let storedKey = localStorage.getItem(keyName);
+    
+    // Clear any old version keys
+    const oldKeyName = 'chatKey-' + chatId;
+    if (localStorage.getItem(oldKeyName)) {
+        console.log('🧹 Clearing old random key for chat:', chatId);
+        localStorage.removeItem(oldKeyName);
+    }
+    
+    if (!storedKey) {
+        // Generate a deterministic key from the chat ID
+        // This ensures all users in the same chat will have the same encryption key
+        const encoder = new TextEncoder();
+        const chatIdBytes = encoder.encode(chatId + 'FlowSecSharedSecret2024'); // Add salt
+        
+        // Create a hash of the chat ID to use as key material
+        const hashBuffer = await window.crypto.subtle.digest('SHA-256', chatIdBytes);
+        
+        // Generate the AES key from the hash
+        const key = await window.crypto.subtle.importKey(
+            'raw',
+            hashBuffer,
+            { name: 'AES-GCM', length: 256 },
+            true,
+            ['encrypt', 'decrypt']
+        );
+        
+        // Store the key in localStorage for faster access
         const jwk = await window.crypto.subtle.exportKey('jwk', key);
-        localStorage.setItem('chatKey-' + chatId, JSON.stringify(jwk));
+        localStorage.setItem(keyName, JSON.stringify(jwk));
+        
+        console.log('🔑 Generated NEW deterministic key for chat:', chatId, 'Key preview:', jwk.k.substring(0, 10) + '...');
         return key;
     }
-    return await window.crypto.subtle.importKey('jwk', JSON.parse(key), { name: 'AES-GCM' }, true, ['encrypt', 'decrypt']);
+    
+    // Load existing key from localStorage
+    try {
+        const key = await window.crypto.subtle.importKey('jwk', JSON.parse(storedKey), { name: 'AES-GCM' }, true, ['encrypt', 'decrypt']);
+        console.log('🔑 Loaded EXISTING deterministic key for chat:', chatId);
+        return key;
+    } catch (error) {
+        console.log('🔑 Failed to load stored key, regenerating for chat:', chatId);
+        localStorage.removeItem(keyName);
+        return getChatKey(chatId); // Recursive call to regenerate
+    }
 }
 
 async function encryptMessage(chatId, text) {
