@@ -27,7 +27,8 @@ async function postData(url, data) {
 }
 
 // OTP logic
-const API_BASE = 'http://localhost:5000/api';
+//const API_BASE = 'http://localhost:5000/api';
+const API_BASE=https://flowsec-1.onrender.com/api;
 
 document.getElementById('send-otp').addEventListener('click', async () => {
     const email = document.getElementById('email').value;
