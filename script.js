@@ -5,7 +5,7 @@ class AuthUI {
         this.signupCard = document.getElementById('signup-card');
         this.showSignup = document.getElementById('show-signup');
         this.showLogin = document.getElementById('show-login');
-        this.API_BASE = 'http://localhost:5000/api';
+        this.API_BASE = FlowSecConfig.API_BASE;
         
         this.init();
     }

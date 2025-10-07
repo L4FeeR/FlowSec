@@ -1,7 +1,7 @@
 // Modern FlowSec Dashboard Script
 class FlowSecDashboard {
     constructor() {
-        this.API_BASE = 'http://localhost:5000/api';
+        this.API_BASE = FlowSecConfig.API_BASE;
         this.socket = null;
         this.currentChatId = null;
         this.chats = [];
@@ -1164,7 +1164,7 @@ async function renderMessages() {
             text = '[Encrypted]';
         }
         if (msg.file && msg.file.filename) {
-            div.innerHTML = `<span>${msg.sender === userEmail ? 'You sent a file:' : 'File received:'}</span><br><a class="file-link" href="http://localhost:5000/api/files/${msg.file.filename}" download>${msg.file.originalname}</a><br>${text}`;
+            div.innerHTML = `<span>${msg.sender === userEmail ? 'You sent a file:' : 'File received:'}</span><br><a class="file-link" href="${FlowSecConfig.FILE_API_URL}${msg.file.filename}" download>${msg.file.originalname}</a><br>${text}`;
         } else {
             div.textContent = text;
         }

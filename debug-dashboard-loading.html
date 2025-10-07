@@ -54,7 +54,7 @@
         addLog('User Data: ' + JSON.stringify(user));
 
         // Test API connection
-        fetch('http://localhost:5000/api/health')
+        fetch(FlowSecConfig.API_BASE + '/health')
             .then(response => {
                 addLog('Backend health check: ' + response.status);
                 return response.json();
@@ -67,7 +67,8 @@
             });
     </script>
 
-    <!-- Load dashboard.js to test for errors -->
+    <!-- Load configuration and dashboard.js to test for errors -->
+    <script src="config.js"></script>
     <script src="dashboard.js?v=5"></script>
 
     <script>

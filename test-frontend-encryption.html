@@ -15,6 +15,7 @@
         <div id="results"></div>
     </div>
 
+    <script src="config.js"></script>
     <script>
         // Copy the encryption functions from dashboard.js
         async function getChatKey(chatId) {
@@ -87,7 +88,7 @@
                     encrypted: encrypted
                 };
 
-                const response = await fetch('http://localhost:5000/api/messages', {
+                const response = await fetch(FlowSecConfig.API_BASE + '/messages', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(messageData)
