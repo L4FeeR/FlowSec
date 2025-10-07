@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Clear Cache and Login</title>
+</head>
+<body>
+    <h1>Clearing Demo Mode Cache...</h1>
+    <p>Redirecting to login page in 2 seconds...</p>
+    
+    <script>
+        // Clear all demo mode data
+        localStorage.removeItem('user');
+        localStorage.removeItem('userEmail');
+        localStorage.clear(); // Clear everything to be safe
+        
+        console.log('Cache cleared');
+        
+        // Redirect to login after 2 seconds
+        setTimeout(() => {
+            window.location.href = 'index.html';
+        }, 2000);
+    </script>
+</body>
+</html>

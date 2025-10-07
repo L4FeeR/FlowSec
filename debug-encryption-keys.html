@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Encryption Keys</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        button { margin: 5px; padding: 10px 15px; cursor: pointer; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        pre { background: #f5f5f5; padding: 10px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>FlowSec Encryption Key Debug Tool</h1>
+    
+    <div class="section">
+        <h2>Current Chat Keys in localStorage</h2>
+        <button onclick="showChatKeys()">Show All Chat Keys</button>
+        <button onclick="clearAllChatKeys()">Clear All Chat Keys</button>
+        <div id="keysList"></div>
+    </div>
+    
+    <div class="section">
+        <h2>Test Deterministic Key Generation</h2>
+        <button onclick="testKeyGeneration()">Test Key Generation for Chat</button>
+        <div id="keyTestResults"></div>
+    </div>
+    
+    <div class="section">
+        <h2>Clear Browser Storage</h2>
+        <button onclick="clearAllStorage()">Clear All localStorage</button>
+        <button onclick="clearSessionStorage()">Clear sessionStorage</button>
+        <div id="clearResults"></div>
+    </div>
+
+    <script>
+        function showChatKeys() {
+            const keysList = document.getElementById('keysList');
+            const keys = [];
+            
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key.startsWith('chatKey-')) {
+                    keys.push({
+                        key: key,
+                        chatId: key.replace('chatKey-', ''),
+                        value: localStorage.getItem(key)
+                    });
+                }
+            }
+            
+            if (keys.length === 0) {
+                keysList.innerHTML = '<div class="info">No chat keys found in localStorage</div>';
+            } else {
+                keysList.innerHTML = '<h3>Found ' + keys.length + ' chat keys:</h3>' +
+                    keys.map(k => `
+                        <div style="margin: 10px 0; padding: 10px; background: #f9f9f9;">
+                            <strong>Chat ID:</strong> ${k.chatId}<br>
+                            <strong>Key:</strong> <pre>${k.value}</pre>
+                        </div>
+                    `).join('');
+            }
+        }
+        
+        function clearAllChatKeys() {
+            const keysToRemove = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith('chatKey-')) {
+                    keysToRemove.push(key);
+                }
+            }
+            
+            keysToRemove.forEach(key => localStorage.removeItem(key));
+            
+            document.getElementById('keysList').innerHTML = 
+                `<div class="success">Cleared ${keysToRemove.length} chat keys from localStorage</div>`;
+        }
+        
+        async function testKeyGeneration() {
+            const results = document.getElementById('keyTestResults');
+            
+            try {
+                // Test with a known chat ID
+                const testChatId = 'test-chat-12345';
+                
+                // Generate key first time
+                const key1 = await generateTestKey(testChatId);
+                const jwk1 = await window.crypto.subtle.exportKey('jwk', key1);
+                
+                // Generate key second time (should be identical)
+                const key2 = await generateTestKey(testChatId);
+                const jwk2 = await window.crypto.subtle.exportKey('jwk', key2);
+                
+                const identical = JSON.stringify(jwk1) === JSON.stringify(jwk2);
+                
+                results.innerHTML = `
+                    <div class="${identical ? 'success' : 'error'}">
+                        <h3>Key Generation Test Results:</h3>
+                        <p><strong>Test Chat ID:</strong> ${testChatId}</p>
+                        <p><strong>Keys Identical:</strong> ${identical ? 'YES ✅' : 'NO ❌'}</p>
+                        <p><strong>First Key (k):</strong> ${jwk1.k}</p>
+                        <p><strong>Second Key (k):</strong> ${jwk2.k}</p>
+                    </div>
+                `;
+            } catch (error) {
+                results.innerHTML = `<div class="error">Error testing key generation: ${error.message}</div>`;
+            }
+        }
+        
+        async function generateTestKey(chatId) {
+            // This is the exact same function from dashboard.js
+            const encoder = new TextEncoder();
+            const chatIdBytes = encoder.encode(chatId + 'FlowSecSharedSecret2024');
+            
+            const hashBuffer = await window.crypto.subtle.digest('SHA-256', chatIdBytes);
+            
+            const key = await window.crypto.subtle.importKey(
+                'raw',
+                hashBuffer,
+                { name: 'AES-GCM', length: 256 },
+                true,
+                ['encrypt', 'decrypt']
+            );
+            
+            return key;
+        }
+        
+        function clearAllStorage() {
+            const itemCount = localStorage.length;
+            localStorage.clear();
+            document.getElementById('clearResults').innerHTML = 
+                `<div class="success">Cleared ${itemCount} items from localStorage</div>`;
+        }
+        
+        function clearSessionStorage() {
+            const itemCount = sessionStorage.length;
+            sessionStorage.clear();
+            document.getElementById('clearResults').innerHTML = 
+                `<div class="success">Cleared ${itemCount} items from sessionStorage</div>`;
+        }
+        
+        // Auto-show keys on load
+        document.addEventListener('DOMContentLoaded', () => {
+            showChatKeys();
+        });
+    </script>
+</body>
+</html>

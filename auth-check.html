@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Auth Check</title>
+</head>
+<body>
+    <h1>Authentication Status Check</h1>
+    <div id="auth-status"></div>
+    
+    <script>
+        const authDiv = document.getElementById('auth-status');
+        
+        // Check localStorage
+        const userEmail = localStorage.getItem('userEmail');
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        
+        authDiv.innerHTML = `
+            <h3>User Email:</h3>
+            <p>${userEmail || 'Not found'}</p>
+            
+            <h3>User Object:</h3>
+            <pre>${JSON.stringify(user, null, 2)}</pre>
+            
+            <h3>All localStorage keys:</h3>
+            <ul>
+                ${Object.keys(localStorage).map(key => `<li>${key}: ${localStorage.getItem(key)}</li>`).join('')}
+            </ul>
+            
+            <h3>Actions:</h3>
+            <button onclick="clearAuth()">Clear Auth Data</button>
+            <button onclick="setTestAuth()">Set Test Auth</button>
+            <button onclick="goToDashboard()">Go to Dashboard</button>
+        `;
+        
+        function clearAuth() {
+            localStorage.clear();
+            location.reload();
+        }
+        
+        function setTestAuth() {
+            localStorage.setItem('userEmail', 'test@example.com');
+            localStorage.setItem('user', JSON.stringify({
+                email: 'test@example.com',
+                username: 'TestUser',
+                profileIcon: null
+            }));
+            location.reload();
+        }
+        
+        function goToDashboard() {
+            window.location.href = 'dashboard.html';
+        }
+    </script>
+</body>
+</html>

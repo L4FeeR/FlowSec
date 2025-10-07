@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Quick Login Test</title>
+</head>
+<body>
+    <h1>Quick Login Test</h1>
+    <p>This will set up test user authentication and redirect to dashboard</p>
+    
+    <button onclick="setupTestUser()">Setup Test User & Go to Dashboard</button>
+    <button onclick="checkCurrentAuth()">Check Current Auth</button>
+    
+    <div id="output"></div>
+    
+    <script>
+        function setupTestUser() {
+            // Set up a test user (simulate successful login)
+            const testUser = {
+                email: 'akashkalimuthu4@gmail.com',  // Use your Gmail
+                username: 'Akash',
+                profileIcon: null
+            };
+            
+            localStorage.setItem('userEmail', testUser.email);
+            localStorage.setItem('user', JSON.stringify(testUser));
+            
+            document.getElementById('output').innerHTML = 
+                '<p>✅ Test user set up with email: ' + testUser.email + '</p>' +
+                '<p>Redirecting to dashboard in 2 seconds...</p>';
+            
+            setTimeout(() => {
+                window.location.href = 'dashboard.html';
+            }, 2000);
+        }
+        
+        function checkCurrentAuth() {
+            const userEmail = localStorage.getItem('userEmail');
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            
+            document.getElementById('output').innerHTML = 
+                '<h3>Current Authentication Status:</h3>' +
+                '<p><strong>User Email:</strong> ' + (userEmail || 'Not set') + '</p>' +
+                '<p><strong>User Object:</strong></p>' +
+                '<pre>' + JSON.stringify(user, null, 2) + '</pre>';
+        }
+        
+        // Check on page load
+        checkCurrentAuth();
+    </script>
+</body>
+</html>

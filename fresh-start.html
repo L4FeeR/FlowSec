@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FlowSec - Clear Storage & Reload</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-align: center;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+        .container {
+            background: rgba(255,255,255,0.1);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            max-width: 400px;
+        }
+        h1 { margin-bottom: 20px; }
+        .status { 
+            margin: 20px 0; 
+            padding: 15px; 
+            border-radius: 8px; 
+            background: rgba(255,255,255,0.2);
+        }
+        button { 
+            padding: 12px 24px; 
+            font-size: 16px; 
+            border: none; 
+            border-radius: 8px; 
+            background: #4CAF50; 
+            color: white; 
+            cursor: pointer; 
+            margin: 10px;
+        }
+        button:hover { background: #45a049; }
+        .success { color: #4CAF50; }
+        .info { color: #2196F3; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🛡️ FlowSec Storage Reset</h1>
+        <p>This will clear all cached encryption keys and reload the dashboard with the latest encryption fix.</p>
+        
+        <div id="status" class="status">
+            Ready to clear storage...
+        </div>
+        
+        <button onclick="clearAndRedirect()">Clear Storage & Go to Dashboard</button>
+        <button onclick="justRedirect()">Go to Dashboard (Keep Storage)</button>
+    </div>
+
+    <script>
+        function clearAndRedirect() {
+            const status = document.getElementById('status');
+            
+            try {
+                // Count items before clearing
+                const localCount = localStorage.length;
+                const sessionCount = sessionStorage.length;
+                
+                // Clear all storage
+                localStorage.clear();
+                sessionStorage.clear();
+                
+                status.innerHTML = `
+                    <div class="success">✅ Storage Cleared!</div>
+                    <div class="info">• Removed ${localCount} localStorage items</div>
+                    <div class="info">• Removed ${sessionCount} sessionStorage items</div>
+                    <div class="info">• Redirecting to dashboard...</div>
+                `;
+                
+                // Redirect after a brief delay
+                setTimeout(() => {
+                    window.location.href = 'dashboard.html?fresh=1';
+                }, 2000);
+                
+            } catch (error) {
+                status.innerHTML = `<div style="color: #f44336;">❌ Error: ${error.message}</div>`;
+            }
+        }
+        
+        function justRedirect() {
+            window.location.href = 'dashboard.html?fresh=1';
+        }
+        
+        // Auto-clear on load if URL has clear=1
+        document.addEventListener('DOMContentLoaded', () => {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('clear') === '1') {
+                clearAndRedirect();
+            }
+        });
+    </script>
+</body>
+</html>

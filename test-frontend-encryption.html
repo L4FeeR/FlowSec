@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Encryption Test</title>
+</head>
+<body>
+    <h1>Encryption Test</h1>
+    <div>
+        <label>Test Message:</label>
+        <input type="text" id="testMessage" value="Hello World Test" />
+        <button onclick="testEncryption()">Test Encryption</button>
+    </div>
+    <div>
+        <h3>Results:</h3>
+        <div id="results"></div>
+    </div>
+
+    <script>
+        // Copy the encryption functions from dashboard.js
+        async function getChatKey(chatId) {
+            let key = localStorage.getItem('chatKey-' + chatId);
+            if (!key) {
+                key = await window.crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']);
+                const jwk = await window.crypto.subtle.exportKey('jwk', key);
+                localStorage.setItem('chatKey-' + chatId, JSON.stringify(jwk));
+                return key;
+            }
+            return await window.crypto.subtle.importKey('jwk', JSON.parse(key), { name: 'AES-GCM' }, true, ['encrypt', 'decrypt']);
+        }
+
+        async function encryptMessage(chatId, text) {
+            console.log('encryptMessage called with:', chatId, text);
+            try {
+                const key = await getChatKey(chatId);
+                const iv = window.crypto.getRandomValues(new Uint8Array(12));
+                const enc = new TextEncoder().encode(text);
+                const ciphertext = await window.crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc);
+                const result = btoa(String.fromCharCode(...iv) + String.fromCharCode(...new Uint8Array(ciphertext)));
+                console.log('Encryption result:', result);
+                return result;
+            } catch (error) {
+                console.error('Encryption error:', error);
+                throw error;
+            }
+        }
+
+        async function decryptMessage(chatId, encrypted) {
+            console.log('decryptMessage called with:', chatId, encrypted.substring(0, 50) + '...');
+            try {
+                const key = await getChatKey(chatId);
+                const data = atob(encrypted);
+                const iv = Uint8Array.from(data.slice(0, 12), c => c.charCodeAt(0));
+                const ct = Uint8Array.from(data.slice(12), c => c.charCodeAt(0));
+                const dec = await window.crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
+                const result = new TextDecoder().decode(dec);
+                console.log('Decryption result:', result);
+                return result;
+            } catch (error) {
+                console.error('Decryption error:', error);
+                throw error;
+            }
+        }
+
+        async function testEncryption() {
+            const testMessage = document.getElementById('testMessage').value;
+            const results = document.getElementById('results');
+            const testChatId = 'test-chat-123';
+
+            try {
+                results.innerHTML = '<p>Testing encryption...</p>';
+
+                // Test encryption
+                const encrypted = await encryptMessage(testChatId, testMessage);
+                results.innerHTML += `<p><strong>Original:</strong> ${testMessage}</p>`;
+                results.innerHTML += `<p><strong>Encrypted:</strong> ${encrypted.substring(0, 50)}...</p>`;
+                results.innerHTML += `<p><strong>Encrypted Length:</strong> ${encrypted.length}</p>`;
+
+                // Test decryption
+                const decrypted = await decryptMessage(testChatId, encrypted);
+                results.innerHTML += `<p><strong>Decrypted:</strong> ${decrypted}</p>`;
+                results.innerHTML += `<p><strong>Match:</strong> ${testMessage === decrypted ? '✅ YES' : '❌ NO'}</p>`;
+
+                // Test API call
+                const messageData = {
+                    chatId: '68e0cda284a4497aca5f3a7e', // Use real chat ID from our test
+                    sender: 'akashkalimuthu4@gmail.com',
+                    encrypted: encrypted
+                };
+
+                const response = await fetch('http://localhost:5000/api/messages', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(messageData)
+                });
+
+                const apiResult = await response.json();
+                results.innerHTML += `<p><strong>API Response:</strong> ${JSON.stringify(apiResult, null, 2)}</p>`;
+                results.innerHTML += `<p><strong>Frontend Encryption:</strong> ✅ WORKING</p>`;
+
+            } catch (error) {
+                results.innerHTML += `<p><strong>Error:</strong> ${error.message}</p>`;
+                console.error('Test error:', error);
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Debug</title>
+    <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+    <h1>Dashboard Debug Page</h1>
+    <div id="debug-info">
+        <h3>Loading Status:</h3>
+        <div id="status">Starting...</div>
+        <h3>Console Logs:</h3>
+        <div id="logs"></div>
+    </div>
+
+    <script>
+        const statusDiv = document.getElementById('status');
+        const logsDiv = document.getElementById('logs');
+
+        function addLog(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            logsDiv.innerHTML += `<p>${timestamp}: ${message}</p>`;
+            console.log(message);
+        }
+
+        // Override console.log to capture logs
+        const originalLog = console.log;
+        console.log = function(...args) {
+            addLog(args.join(' '));
+            originalLog.apply(console, args);
+        };
+
+        // Override console.error to capture errors
+        const originalError = console.error;
+        console.error = function(...args) {
+            addLog('ERROR: ' + args.join(' '));
+            originalError.apply(console, args);
+        };
+
+        // Capture unhandled errors
+        window.addEventListener('error', function(event) {
+            addLog('SCRIPT ERROR: ' + event.error.message + ' at ' + event.filename + ':' + event.lineno);
+        });
+
+        statusDiv.textContent = 'Loading dashboard.js...';
+        addLog('Starting dashboard debug');
+
+        // Check if user data exists
+        const userEmail = localStorage.getItem('userEmail');
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        addLog('User Email: ' + (userEmail || 'not found'));
+        addLog('User Data: ' + JSON.stringify(user));
+
+        // Test API connection
+        fetch('http://localhost:5000/api/health')
+            .then(response => {
+                addLog('Backend health check: ' + response.status);
+                return response.json();
+            })
+            .then(data => {
+                addLog('Backend response: ' + JSON.stringify(data));
+            })
+            .catch(error => {
+                addLog('Backend error: ' + error.message);
+            });
+    </script>
+
+    <!-- Load dashboard.js to test for errors -->
+    <script src="dashboard.js?v=5"></script>
+
+    <script>
+        // Check if FlowSecDashboard class was loaded
+        setTimeout(() => {
+            if (typeof FlowSecDashboard !== 'undefined') {
+                addLog('FlowSecDashboard class loaded successfully');
+                statusDiv.textContent = 'Dashboard class loaded';
+            } else {
+                addLog('ERROR: FlowSecDashboard class not found');
+                statusDiv.textContent = 'Dashboard class failed to load';
+            }
+        }, 1000);
+    </script>
+</body>
+</html>

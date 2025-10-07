@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Reset Encryption Keys</title>
+</head>
+<body>
+    <h1>🔑 Reset Encryption Keys</h1>
+    <p>This will clear all chat encryption keys to ensure both users generate the same deterministic keys.</p>
+    
+    <button onclick="resetKeys()">Reset All Chat Keys</button>
+    <button onclick="showCurrentKeys()">Show Current Keys</button>
+    <button onclick="testKeyGeneration()">Test Key Generation</button>
+    
+    <div id="output"></div>
+    
+    <script>
+        function resetKeys() {
+            const output = document.getElementById('output');
+            let keysFound = 0;
+            
+            // Find all chat keys in localStorage
+            for (let i = localStorage.length - 1; i >= 0; i--) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith('chatKey-')) {
+                    localStorage.removeItem(key);
+                    keysFound++;
+                }
+            }
+            
+            output.innerHTML = `
+                <h3>✅ Reset Complete</h3>
+                <p>Removed ${keysFound} chat encryption keys.</p>
+                <p>Both users will now generate the same deterministic keys for shared chats.</p>
+                <button onclick="window.location.href='dashboard.html'">Go to Dashboard</button>
+            `;
+        }
+        
+        function showCurrentKeys() {
+            const output = document.getElementById('output');
+            const keys = [];
+            
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith('chatKey-')) {
+                    const chatId = key.replace('chatKey-', '');
+                    keys.push(chatId);
+                }
+            }
+            
+            output.innerHTML = `
+                <h3>Current Chat Keys:</h3>
+                ${keys.length > 0 ? 
+                    '<ul>' + keys.map(id => `<li>Chat ID: ${id}</li>`).join('') + '</ul>' : 
+                    '<p>No chat keys found.</p>'
+                }
+            `;
+        }
+        
+        async function testKeyGeneration() {
+            const output = document.getElementById('output');
+            const testChatId = 'test-chat-123';
+            
+            try {
+                // Copy the getChatKey function to test it
+                async function getChatKey(chatId) {
+                    const encoder = new TextEncoder();
+                    const chatIdBytes = encoder.encode(chatId + 'FlowSecSharedSecret2024');
+                    const hashBuffer = await window.crypto.subtle.digest('SHA-256', chatIdBytes);
+                    const key = await window.crypto.subtle.importKey(
+                        'raw',
+                        hashBuffer,
+                        { name: 'AES-GCM', length: 256 },
+                        true,
+                        ['encrypt', 'decrypt']
+                    );
+                    const jwk = await window.crypto.subtle.exportKey('jwk', key);
+                    return jwk;
+                }
+                
+                const key1 = await getChatKey(testChatId);
+                const key2 = await getChatKey(testChatId);
+                
+                const keysMatch = JSON.stringify(key1) === JSON.stringify(key2);
+                
+                output.innerHTML = `
+                    <h3>🔬 Key Generation Test</h3>
+                    <p><strong>Chat ID:</strong> ${testChatId}</p>
+                    <p><strong>Keys Match:</strong> ${keysMatch ? '✅ YES' : '❌ NO'}</p>
+                    <p><strong>Key 1:</strong> ${JSON.stringify(key1).substring(0, 100)}...</p>
+                    <p><strong>Key 2:</strong> ${JSON.stringify(key2).substring(0, 100)}...</p>
+                    <p>${keysMatch ? 
+                        '✅ Deterministic key generation is working correctly!' : 
+                        '❌ Keys are different - there may be an issue.'
+                    }</p>
+                `;
+            } catch (error) {
+                output.innerHTML = `<h3>❌ Test Failed</h3><p>Error: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

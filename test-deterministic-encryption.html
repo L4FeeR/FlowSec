@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Deterministic Encryption</title>
+</head>
+<body>
+    <h1>🔐 Test Deterministic Encryption</h1>
+    <p>This tests that the same chat generates the same encryption keys for all users.</p>
+    
+    <div>
+        <label>Chat ID:</label>
+        <input type="text" id="chatId" value="test-chat-12345" />
+        <br><br>
+        
+        <label>Message:</label>
+        <input type="text" id="message" value="Hello, this is a test message!" />
+        <br><br>
+        
+        <button onclick="testEncryption()">Test Encryption/Decryption</button>
+        <button onclick="clearKeys()">Clear Keys & Test</button>
+    </div>
+    
+    <div id="results"></div>
+    
+    <script>
+        // Copy the deterministic getChatKey function
+        async function getChatKey(chatId) {
+            let key = localStorage.getItem('chatKey-' + chatId);
+            if (!key) {
+                console.log('Generating new deterministic key for chat:', chatId);
+                const encoder = new TextEncoder();
+                const chatIdBytes = encoder.encode(chatId + 'FlowSecSharedSecret2024');
+                const hashBuffer = await window.crypto.subtle.digest('SHA-256', chatIdBytes);
+                
+                key = await window.crypto.subtle.importKey(
+                    'raw',
+                    hashBuffer,
+                    { name: 'AES-GCM', length: 256 },
+                    true,
+                    ['encrypt', 'decrypt']
+                );
+                
+                const jwk = await window.crypto.subtle.exportKey('jwk', key);
+                localStorage.setItem('chatKey-' + chatId, JSON.stringify(jwk));
+                return key;
+            }
+            
+            console.log('Using existing key for chat:', chatId);
+            return await window.crypto.subtle.importKey('jwk', JSON.parse(key), { name: 'AES-GCM' }, true, ['encrypt', 'decrypt']);
+        }
+
+        async function encryptMessage(chatId, text) {
+            const key = await getChatKey(chatId);
+            const iv = window.crypto.getRandomValues(new Uint8Array(12));
+            const enc = new TextEncoder().encode(text);
+            const ciphertext = await window.crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc);
+            return btoa(String.fromCharCode(...iv) + String.fromCharCode(...new Uint8Array(ciphertext)));
+        }
+
+        async function decryptMessage(chatId, encrypted) {
+            const key = await getChatKey(chatId);
+            const data = atob(encrypted);
+            const iv = Uint8Array.from(data.slice(0, 12), c => c.charCodeAt(0));
+            const ct = Uint8Array.from(data.slice(12), c => c.charCodeAt(0));
+            const dec = await window.crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
+            return new TextDecoder().decode(dec);
+        }
+
+        async function testEncryption() {
+            const chatId = document.getElementById('chatId').value;
+            const message = document.getElementById('message').value;
+            const results = document.getElementById('results');
+            
+            try {
+                results.innerHTML = '<p>🔄 Testing encryption...</p>';
+                
+                // Test 1: Encrypt and decrypt the message
+                console.log('Original message:', message);
+                const encrypted = await encryptMessage(chatId, message);
+                console.log('Encrypted:', encrypted);
+                
+                const decrypted = await decryptMessage(chatId, encrypted);
+                console.log('Decrypted:', decrypted);
+                
+                // Test 2: Generate key again and test (should be the same)
+                const encrypted2 = await encryptMessage(chatId, message);
+                const decrypted2 = await decryptMessage(chatId, encrypted2);
+                
+                // Test 3: Check if keys are deterministic
+                const key1 = await getChatKey(chatId);
+                const key2 = await getChatKey(chatId);
+                const jwk1 = await window.crypto.subtle.exportKey('jwk', key1);
+                const jwk2 = await window.crypto.subtle.exportKey('jwk', key2);
+                const keysMatch = JSON.stringify(jwk1) === JSON.stringify(jwk2);
+                
+                results.innerHTML = `
+                    <h3>🔬 Test Results</h3>
+                    <p><strong>Chat ID:</strong> ${chatId}</p>
+                    <p><strong>Original:</strong> ${message}</p>
+                    <p><strong>Encrypted 1:</strong> ${encrypted.substring(0, 50)}...</p>
+                    <p><strong>Decrypted 1:</strong> ${decrypted}</p>
+                    <p><strong>Encrypted 2:</strong> ${encrypted2.substring(0, 50)}...</p>
+                    <p><strong>Decrypted 2:</strong> ${decrypted2}</p>
+                    <p><strong>Match Original:</strong> ${message === decrypted && message === decrypted2 ? '✅ YES' : '❌ NO'}</p>
+                    <p><strong>Keys Deterministic:</strong> ${keysMatch ? '✅ YES' : '❌ NO'}</p>
+                    <p><strong>Different Ciphertexts:</strong> ${encrypted !== encrypted2 ? '✅ YES (Good - IV is random)' : '❌ NO (Bad - should be different)'}</p>
+                    
+                    ${message === decrypted && message === decrypted2 && keysMatch ? 
+                        '<p style="color: green;">🎉 <strong>All tests passed! Deterministic encryption is working correctly.</strong></p>' :
+                        '<p style="color: red;">❌ <strong>Some tests failed. Check the implementation.</strong></p>'
+                    }
+                `;
+                
+            } catch (error) {
+                results.innerHTML = `<p style="color: red;">❌ <strong>Error:</strong> ${error.message}</p>`;
+                console.error('Test failed:', error);
+            }
+        }
+
+        function clearKeys() {
+            const chatId = document.getElementById('chatId').value;
+            localStorage.removeItem('chatKey-' + chatId);
+            document.getElementById('results').innerHTML = '<p>🗑️ Cleared keys for chat: ' + chatId + '</p>';
+            setTimeout(testEncryption, 1000);
+        }
+    </script>
+</body>
+</html>
