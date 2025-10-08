@@ -91,6 +91,17 @@ function generateOtp() {
 // Send OTP endpoint — respond quickly and send email asynchronously to avoid request timeouts
 app.post('/api/send-otp', async (req, res) => {
     const { email } = req.body;
+    // Debug logging to help diagnose CORS/timeout issues in deployed logs
+    try {
+        console.log('[send-otp] Incoming request', {
+            origin: req.headers.origin,
+            ip: req.ip || req.connection?.remoteAddress,
+            bodySize: req.headers['content-length'] || null,
+            timestamp: new Date().toISOString()
+        });
+    } catch (logErr) {
+        // ignore logging errors
+    }
     if (!email) return res.status(400).json({ message: 'Email required' });
     const otp = generateOtp();
 
@@ -124,6 +135,12 @@ app.post('/api/send-otp', async (req, res) => {
             console.error('Failed background tasks for OTP to', email, err && err.message ? err.message : err);
         }
     })();
+});
+
+// Lightweight health check for uptime testing
+app.get('/_health', (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({ status: 'ok', time: new Date().toISOString() });
 });
 
 // Verify OTP endpoint
