@@ -93,15 +93,21 @@ app.post('/api/send-otp', async (req, res) => {
     const { email } = req.body;
     if (!email) return res.status(400).json({ message: 'Email required' });
     const otp = generateOtp();
-    await Otp.deleteMany({ email }); // Remove old OTPs
-    await Otp.create({ email, otp });
 
-    // Respond immediately so the client isn't blocked by email delivery delays
+    // Respond immediately so the client isn't blocked by DB or email delivery delays
     res.json({ message: 'OTP sent' });
 
-    // Send the email in background with a timeout to prevent hanging requests
+    // Perform DB writes and send the email in background
     (async () => {
         try {
+            try {
+                await Otp.deleteMany({ email }); // Remove old OTPs
+                await Otp.create({ email, otp });
+                console.log('OTP stored for', email);
+            } catch (dbErr) {
+                console.error('Failed to write OTP to DB for', email, dbErr && dbErr.message ? dbErr.message : dbErr);
+            }
+
             const sendPromise = transporter.sendMail({
                 from: process.env.EMAIL_USER,
                 to: email,
@@ -109,13 +115,13 @@ app.post('/api/send-otp', async (req, res) => {
                 text: `Your OTP is: ${otp}`
             });
 
-            // Timeout after 15 seconds
+            // Timeout after 15 seconds for mailer
             const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('mailer timeout')), 15000));
             await Promise.race([sendPromise, timeout]);
             console.log('OTP email sent to', email);
         } catch (err) {
             // Log errors for debugging — do not affect client response
-            console.error('Failed to send OTP email to', email, err && err.message ? err.message : err);
+            console.error('Failed background tasks for OTP to', email, err && err.message ? err.message : err);
         }
     })();
 });
