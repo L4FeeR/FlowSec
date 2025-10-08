@@ -15,11 +15,36 @@ dotenv.config();
 
 const app = express();
 app.use(express.json({ limit: '10mb' }));
+// Configure CORS. Use ALLOWED_ORIGINS env var (comma-separated) or default to '*'.
+// Example: ALLOWED_ORIGINS=https://flowsec-2.onrender.com
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || '*').split(',').map(s => s.trim());
 app.use(cors({
-  origin: 'https://flowsec-2.onrender.com', // your static site URL
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  credentials: true
+    origin: function(origin, callback) {
+        // allow requests with no origin (e.g., mobile apps, curl)
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+        return callback(new Error('CORS policy: This origin is not allowed'));
+    },
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    credentials: true,
+    optionsSuccessStatus: 200
 }));
+
+// Ensure preflight and error responses include CORS headers (safety net)
+app.use((req, res, next) => {
+    const origin = req.headers.origin || '*';
+    if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
+        res.header('Access-Control-Allow-Origin', allowedOrigins.includes('*') ? '*' : origin);
+    }
+    res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    // Handle preflight
+    if (req.method === 'OPTIONS') return res.sendStatus(200);
+    next();
+});
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // Multer setup for file uploads

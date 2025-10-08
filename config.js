@@ -1,7 +1,7 @@
 // FlowSec Client Configuration
 const FlowSecConfig = {
     // API endpoints
-    API_BASE: 'https://flowsec-1.onrender.com/api',
+    API_BASE: 'https://flowsec-1.onrender.com/',
     AVATAR_API_URL: 'https://ui-avatars.com/api/?name=',
     FILE_API_URL: 'https://flowsec-1.onrender.com/api/files/',
     
