@@ -88,23 +88,36 @@ function generateOtp() {
 }
 
 // Send OTP endpoint
+// Send OTP endpoint — respond quickly and send email asynchronously to avoid request timeouts
 app.post('/api/send-otp', async (req, res) => {
     const { email } = req.body;
     if (!email) return res.status(400).json({ message: 'Email required' });
     const otp = generateOtp();
     await Otp.deleteMany({ email }); // Remove old OTPs
     await Otp.create({ email, otp });
-    try {
-        await transporter.sendMail({
-            from: process.env.EMAIL_USER,
-            to: email,
-            subject: 'Your OTP for Secure Messenger',
-            text: `Your OTP is: ${otp}`
-        });
-        res.json({ message: 'OTP sent' });
-    } catch (err) {
-        res.status(500).json({ message: 'Failed to send OTP', error: err.message });
-    }
+
+    // Respond immediately so the client isn't blocked by email delivery delays
+    res.json({ message: 'OTP sent' });
+
+    // Send the email in background with a timeout to prevent hanging requests
+    (async () => {
+        try {
+            const sendPromise = transporter.sendMail({
+                from: process.env.EMAIL_USER,
+                to: email,
+                subject: 'Your OTP for Secure Messenger',
+                text: `Your OTP is: ${otp}`
+            });
+
+            // Timeout after 15 seconds
+            const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('mailer timeout')), 15000));
+            await Promise.race([sendPromise, timeout]);
+            console.log('OTP email sent to', email);
+        } catch (err) {
+            // Log errors for debugging — do not affect client response
+            console.error('Failed to send OTP email to', email, err && err.message ? err.message : err);
+        }
+    })();
 });
 
 // Verify OTP endpoint
