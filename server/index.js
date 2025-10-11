@@ -88,6 +88,22 @@ transporter.verify()
     .then(() => console.log('Mailer: transporter verified'))
     .catch(err => console.error('Mailer: transporter verification failed', err && err.message ? err.message : err));
 
+// In-memory mailer logs (last 50 events) to help debugging delivery
+const mailerLogs = [];
+function pushMailerLog(event) {
+    try {
+        mailerLogs.unshift(Object.assign({ time: new Date().toISOString() }, event));
+        if (mailerLogs.length > 50) mailerLogs.pop();
+    } catch (e) {
+        console.error('pushMailerLog error', e && e.message ? e.message : e);
+    }
+}
+
+// Expose recent mailer logs for quick debugging (not for production)
+app.get('/api/mailer-logs', (req, res) => {
+    res.json({ logs: mailerLogs });
+});
+
 function generateOtp() {
     return Math.floor(100000 + Math.random() * 900000).toString();
 }
@@ -133,10 +149,11 @@ app.post('/api/send-otp', async (req, res) => {
             const sendPromise = transporter.sendMail(mailOptions);
             const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('mailer timeout')), 15000));
             const info = await Promise.race([sendPromise, timeout]);
-
             console.log('OTP email sent to', email, 'info:', info && (info.messageId || JSON.stringify(info)));
+            pushMailerLog({ type: 'otp', to: email, ok: true, info: info && (info.messageId || info) });
         } catch (err) {
             console.error('Failed background tasks for OTP to', email, err && err.message ? err.message : err);
+            pushMailerLog({ type: 'otp', to: email, ok: false, error: err && err.message ? err.message : String(err) });
         }
     })();
 });
@@ -162,8 +179,10 @@ app.post('/api/test-email', async (req, res) => {
             const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('mailer timeout')), 15000));
             const info = await Promise.race([sendPromise, timeout]);
             console.log('Test email sent to', to, 'info:', info && (info.messageId || JSON.stringify(info)));
+            pushMailerLog({ type: 'test', to, ok: true, info: info && (info.messageId || info) });
         } catch (err) {
             console.error('Test email failed (background)', err && err.message ? err.message : err);
+            pushMailerLog({ type: 'test', to, ok: false, error: err && err.message ? err.message : String(err) });
         }
     })();
 });
