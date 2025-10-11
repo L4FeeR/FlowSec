@@ -103,7 +103,7 @@ if (process.env.SENDGRID_API_KEY) {
 } else if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
     // Fallback to Gmail SMTP (requires app password / proper credentials)
     // Try port 587 with STARTTLS (more likely to work than 465 on restricted hosts)
-    transporter = nodemailer.createTransporter(Object.assign({
+    transporter = nodemailer.createTransport(Object.assign({
         host: 'smtp.gmail.com',
         port: 587,
         secure: false, // true for 465, false for other ports
