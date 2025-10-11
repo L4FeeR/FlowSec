@@ -77,9 +77,24 @@ const Otp = mongoose.model('Otp', otpSchema);
 // Nodemailer setup
 let transporter;
 let transporterType = 'none';
+const MAIL_CONN_TIMEOUT = parseInt(process.env.MAIL_CONN_TIMEOUT || '30000', 10);
+const MAIL_GREETING_TIMEOUT = parseInt(process.env.MAIL_GREETING_TIMEOUT || '30000', 10);
+const MAIL_SOCKET_TIMEOUT = parseInt(process.env.MAIL_SOCKET_TIMEOUT || '30000', 10);
+const MAIL_DEBUG = (process.env.DEBUG_MAIL === 'true');
+
+// Helper options applied to transports for better timeouts and optional debug
+const transportBaseOptions = {
+    logger: MAIL_DEBUG,
+    debug: MAIL_DEBUG,
+    connectionTimeout: MAIL_CONN_TIMEOUT,
+    greetingTimeout: MAIL_GREETING_TIMEOUT,
+    socketTimeout: MAIL_SOCKET_TIMEOUT,
+    tls: { rejectUnauthorized: false }
+};
+
 if (process.env.SENDGRID_API_KEY) {
     // Use SendGrid SMTP when API key is provided (recommended for deliverability)
-    transporter = nodemailer.createTransport({
+    transporter = nodemailer.createTransport(Object.assign({
         host: 'smtp.sendgrid.net',
         port: 587,
         secure: false,
@@ -87,22 +102,25 @@ if (process.env.SENDGRID_API_KEY) {
             user: 'apikey',
             pass: process.env.SENDGRID_API_KEY
         }
-    });
+    }, transportBaseOptions));
     transporterType = 'sendgrid-smtp';
     console.log('Mailer: configured to use SendGrid SMTP (SENDGRID_API_KEY detected)');
 } else if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
     // Fallback to Gmail SMTP (requires app password / proper credentials)
-    transporter = nodemailer.createTransport({
+    transporter = nodemailer.createTransport(Object.assign({
         service: 'gmail',
         auth: {
             user: process.env.EMAIL_USER,
             pass: process.env.EMAIL_PASS
         }
-    });
+    }, transportBaseOptions));
     transporterType = 'gmail';
     console.log('Mailer: configured to use Gmail SMTP (EMAIL_USER set)');
 } else {
-    console.warn('Mailer: no mail credentials found (set SENDGRID_API_KEY or EMAIL_USER/EMAIL_PASS)');
+    // No external SMTP configured — use a JSON transport that writes emails to logs (development fallback).
+    console.warn('Mailer: no mail credentials found (set SENDGRID_API_KEY or EMAIL_USER/EMAIL_PASS). Using jsonTransport fallback for development.');
+    transporter = nodemailer.createTransport(Object.assign({ jsonTransport: true }, transportBaseOptions));
+    transporterType = 'json';
 }
 
 // Verify transporter at startup if present
