@@ -1,6 +1,7 @@
 import express from 'express';
 import mongoose from 'mongoose';
 import nodemailer from 'nodemailer';
+import net from 'net';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import multer from 'multer';
@@ -82,6 +83,7 @@ const MAIL_CONN_TIMEOUT = parseInt(process.env.MAIL_CONN_TIMEOUT || '30000', 10)
 const MAIL_GREETING_TIMEOUT = parseInt(process.env.MAIL_GREETING_TIMEOUT || '30000', 10);
 const MAIL_SOCKET_TIMEOUT = parseInt(process.env.MAIL_SOCKET_TIMEOUT || '30000', 10);
 const MAIL_DEBUG = (process.env.DEBUG_MAIL === 'true');
+const MAIL_DEBUG_NET = (process.env.MAIL_DEBUG_NET === 'true');
 
 // Helper options applied to transports for better timeouts and optional debug
 const transportBaseOptions = {
@@ -121,6 +123,33 @@ if (sendgridEnabled) {
     // Quick sanity log for SendGrid (no verify() method for HTTP client)
     console.log('Mailer: SendGrid HTTP client is enabled');
 } else if (transporter) {
+    // Optionally run a TCP probe to the transport host/port to give clearer network-level logs
+    (async () => {
+        try {
+            if (MAIL_DEBUG_NET) {
+                const opts = transporter && transporter.options ? transporter.options : {};
+                const host = opts.host || (opts.service === 'gmail' ? 'smtp.gmail.com' : undefined);
+                const port = opts.port || (opts.service === 'gmail' ? 465 : undefined);
+                if (host && port) {
+                    console.log(`Mailer: MAIL_DEBUG_NET enabled — probing ${host}:${port}`);
+                    const probe = await new Promise((resolve) => {
+                        const socket = new net.Socket();
+                        let handled = false;
+                        const to = setTimeout(() => {
+                            if (!handled) { handled = true; socket.destroy(); resolve({ ok: false, reason: 'timeout' }); }
+                        }, Math.max(5000, MAIL_CONN_TIMEOUT));
+                        socket.once('error', (err) => { if (!handled) { handled = true; clearTimeout(to); resolve({ ok: false, reason: err && err.code ? err.code : String(err) }); } });
+                        socket.connect(port, host, () => { if (!handled) { handled = true; clearTimeout(to); socket.end(); resolve({ ok: true }); } });
+                    });
+                    console.log('Mailer: TCP probe result', probe);
+                    pushMailerLog({ type: 'tcp-probe', host, port, result: probe });
+                }
+            }
+        } catch (e) {
+            console.warn('Mailer: TCP probe failed', e && e.message ? e.message : e);
+        }
+    })();
+
     transporter.verify()
         .then(() => console.log(`Mailer: transporter verified (${transporterType})`))
         .catch(err => {
@@ -156,42 +185,81 @@ if (sendgridEnabled) {
         });
 }
 
-// Unified sendEmail helper: uses SendGrid API when available, otherwise falls back to transporter
+// Unified sendEmail helper: uses SendGrid HTTP API when available, otherwise falls back to transporter
 async function sendEmail(mailOptions, timeoutMs = 15000) {
     const method = sendgridEnabled ? 'sendgrid-api' : transporterType;
-    try {
-        if (sendgridEnabled) {
-            // sendgrid expects 'from' to be a verified sender; fall back to EMAIL_USER or a generic address
-            const msg = {
-                to: mailOptions.to,
-                from: mailOptions.from || process.env.EMAIL_USER || 'no-reply@flowsec.app',
-                subject: mailOptions.subject,
-                text: mailOptions.text,
-                html: mailOptions.html
-            };
-            const sendPromise = sgMail.send(msg);
-            const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('mailer timeout')), timeoutMs));
-            const info = await Promise.race([sendPromise, timeout]);
-            // SendGrid returns an array of responses for .send(); normalize a simple info object
-            pushMailerLog({ type: 'send', provider: method, to: mailOptions.to, ok: true, info });
-            return info;
-        } else if (transporter) {
-            const sendPromise = transporter.sendMail(mailOptions);
-            const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('mailer timeout')), timeoutMs));
-            const info = await Promise.race([sendPromise, timeout]);
-            pushMailerLog({ type: 'send', provider: method, to: mailOptions.to, ok: true, info: info && (info.messageId || info) });
-            return info;
-        } else {
-            const err = new Error('no-mailer-configured');
-            pushMailerLog({ type: 'send', provider: method, to: mailOptions.to, ok: false, error: err.message });
+    const transientCodes = new Set(['ETIMEDOUT', 'ECONNRESET', 'EAI_AGAIN']);
+    const maxAttempts = 3;
+
+    const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+            if (sendgridEnabled) {
+                // Build SendGrid v3 payload
+                const payload = {
+                    personalizations: [{ to: [{ email: mailOptions.to }] }],
+                    from: { email: mailOptions.from || process.env.EMAIL_USER || 'no-reply@flowsec.app' },
+                    subject: mailOptions.subject,
+                    content: []
+                };
+                if (mailOptions.text) payload.content.push({ type: 'text/plain', value: mailOptions.text });
+                if (mailOptions.html) payload.content.push({ type: 'text/html', value: mailOptions.html });
+
+                const controller = new AbortController();
+                const to = setTimeout(() => controller.abort(), timeoutMs);
+                const resp = await fetch('https://api.sendgrid.com/v3/mail/send', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${process.env.SENDGRID_API_KEY}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload),
+                    signal: controller.signal
+                });
+                clearTimeout(to);
+
+                if (resp.ok) {
+                    pushMailerLog({ type: 'send', provider: method, to: mailOptions.to, ok: true, info: { status: resp.status } });
+                    return { status: resp.status };
+                }
+
+                const bodyText = await resp.text().catch(() => 'no-body');
+                const status = resp.status;
+                pushMailerLog({ type: 'send', provider: method, to: mailOptions.to, ok: false, status, error: bodyText });
+
+                // Retry on 5xx or rate-limit
+                if ((status >= 500 || status === 429) && attempt < maxAttempts) {
+                    await sleep(500 * attempt);
+                    continue;
+                }
+
+                throw new Error(`sendgrid error ${status}: ${bodyText}`);
+            } else if (transporter) {
+                const sendPromise = transporter.sendMail(mailOptions);
+                const timeout = new Promise((_, reject) => setTimeout(() => {
+                    const e = new Error('mailer timeout'); e.code = 'ETIMEDOUT'; reject(e);
+                }, timeoutMs));
+                const info = await Promise.race([sendPromise, timeout]);
+                pushMailerLog({ type: 'send', provider: method, to: mailOptions.to, ok: true, info: info && (info.messageId || info) });
+                return info;
+            } else {
+                const err = new Error('no-mailer-configured');
+                pushMailerLog({ type: 'send', provider: method, to: mailOptions.to, ok: false, error: err.message });
+                throw err;
+            }
+        } catch (err) {
+            const code = err && err.code ? err.code : undefined;
+            const msg = err && err.message ? err.message : String(err);
+            const isTransient = code && transientCodes.has(code) || (err.name === 'AbortError');
+            pushMailerLog({ type: 'send', provider: method, to: mailOptions.to, ok: false, error: msg, code, attempt });
+            console.error(`Mailer: send attempt ${attempt} failed`, { to: mailOptions.to, code, message: msg });
+            if (isTransient && attempt < maxAttempts) {
+                await sleep(500 * attempt);
+                continue; // retry
+            }
             throw err;
         }
-    } catch (err) {
-        const code = err && err.code ? err.code : undefined;
-        const msg = err && err.message ? err.message : String(err);
-        pushMailerLog({ type: 'send', provider: method, to: mailOptions.to, ok: false, error: msg, code });
-        console.error('Mailer: sendEmail error', { provider: method, to: mailOptions.to, message: msg, code, stack: err && err.stack ? err.stack.split('\n').slice(0,3).join(' | ') : undefined });
-        throw err;
     }
 }
 
