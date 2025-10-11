@@ -150,6 +150,10 @@ function generateOtp() {
     return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
+// Temporary in-memory OTP cache for demos/debug (expires after 5 minutes)
+const recentOtps = new Map();
+
+
 // Send OTP endpoint
 // Send OTP endpoint — respond quickly and send email asynchronously to avoid request timeouts
 app.post('/api/send-otp', async (req, res) => {
@@ -176,6 +180,11 @@ app.post('/api/send-otp', async (req, res) => {
                 await Otp.deleteMany({ email });
                 await Otp.create({ email, otp });
                 console.log('OTP stored for', email);
+                // store in-memory for quick demo access (auto-expire)
+                try {
+                    recentOtps.set(email, { otp, ts: Date.now() });
+                    setTimeout(() => recentOtps.delete(email), 5 * 60 * 1000);
+                } catch (e) {}
             } catch (dbErr) {
                 console.error('Failed to write OTP to DB for', email, dbErr && dbErr.message ? dbErr.message : dbErr);
             }
@@ -198,6 +207,15 @@ app.post('/api/send-otp', async (req, res) => {
             pushMailerLog({ type: 'otp', to: email, ok: false, error: err && err.message ? err.message : String(err) });
         }
     })();
+});
+
+// DEBUG: retrieve last OTP for an email (temporary — remove before production)
+app.get('/api/debug-otp', (req, res) => {
+    const { email } = req.query;
+    if (!email) return res.status(400).json({ message: 'email required' });
+    const entry = recentOtps.get(email);
+    if (!entry) return res.status(404).json({ message: 'No recent OTP found' });
+    return res.json({ email, otp: entry.otp, ageMs: Date.now() - entry.ts });
 });
 
 // Test email endpoint (use to validate mailer from deployed service)
