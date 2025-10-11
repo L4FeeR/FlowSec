@@ -102,15 +102,18 @@ if (process.env.SENDGRID_API_KEY) {
     console.log('Mailer: configured to use SendGrid HTTP API (SENDGRID_API_KEY detected)');
 } else if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
     // Fallback to Gmail SMTP (requires app password / proper credentials)
-    transporter = nodemailer.createTransport(Object.assign({
-        service: 'gmail',
+    // Try port 587 with STARTTLS (more likely to work than 465 on restricted hosts)
+    transporter = nodemailer.createTransporter(Object.assign({
+        host: 'smtp.gmail.com',
+        port: 587,
+        secure: false, // true for 465, false for other ports
         auth: {
             user: process.env.EMAIL_USER,
             pass: process.env.EMAIL_PASS
         }
     }, transportBaseOptions));
-    transporterType = 'gmail';
-    console.log('Mailer: configured to use Gmail SMTP (EMAIL_USER set)');
+    transporterType = 'gmail-587';
+    console.log('Mailer: configured to use Gmail SMTP port 587 (EMAIL_USER set)');
 } else {
     // No external SMTP configured — use a JSON transport that writes emails to logs (development fallback).
     console.warn('Mailer: no mail credentials found (set SENDGRID_API_KEY or EMAIL_USER/EMAIL_PASS). Using jsonTransport fallback for development.');
