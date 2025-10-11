@@ -124,10 +124,22 @@ if (sendgridEnabled) {
     transporter.verify()
         .then(() => console.log(`Mailer: transporter verified (${transporterType})`))
         .catch(err => {
-            // Log full context and push to mailer logs
+            // Log full context and push to mailer logs with richer info
             const msg = err && err.message ? err.message : String(err);
-            console.error('Mailer: transporter verification failed', msg);
-            pushMailerLog({ type: 'verify', provider: transporterType, ok: false, error: msg });
+            const code = err && err.code ? err.code : undefined;
+            const stack = err && err.stack ? err.stack.split('\n').slice(0,3).join(' | ') : undefined;
+            console.error('Mailer: transporter verification failed', { message: msg, code, stack });
+            pushMailerLog({ type: 'verify', provider: transporterType, ok: false, error: msg, code, stack });
+
+            // Also log attempted transport options (mask credentials)
+            try {
+                const opts = transporter && transporter.options ? transporter.options : {};
+                const masked = Object.assign({}, opts);
+                if (masked.auth && masked.auth.pass) masked.auth.pass = '***';
+                if (masked.auth && masked.auth.user) masked.auth.user = String(masked.auth.user).replace(/(.{2}).+(.{@?.+})/, '$1***$2');
+                console.warn('Mailer: transporter options (masked):', masked);
+                pushMailerLog({ type: 'verify', provider: transporterType, ok: false, note: 'transporter-options', options: masked });
+            } catch (e) {}
 
             // Fall back to a safe jsonTransport so the app can continue to run and deliver
             // developer-visible mail content into logs (not real email). This avoids repeated
@@ -175,10 +187,28 @@ async function sendEmail(mailOptions, timeoutMs = 15000) {
             throw err;
         }
     } catch (err) {
-        pushMailerLog({ type: 'send', provider: method, to: mailOptions.to, ok: false, error: err && err.message ? err.message : String(err) });
+        const code = err && err.code ? err.code : undefined;
+        const msg = err && err.message ? err.message : String(err);
+        pushMailerLog({ type: 'send', provider: method, to: mailOptions.to, ok: false, error: msg, code });
+        console.error('Mailer: sendEmail error', { provider: method, to: mailOptions.to, message: msg, code, stack: err && err.stack ? err.stack.split('\n').slice(0,3).join(' | ') : undefined });
         throw err;
     }
 }
+
+// Admin debug endpoint: shows current mailer configuration (masked) and status
+app.get('/api/mailer-debug', (req, res) => {
+    const transportInfo = { transporterType, sendgridEnabled };
+    try {
+        const opts = transporter && transporter.options ? transporter.options : null;
+        if (opts) {
+            const masked = Object.assign({}, opts);
+            if (masked.auth && masked.auth.pass) masked.auth.pass = '***';
+            if (masked.auth && masked.auth.user) masked.auth.user = String(masked.auth.user).replace(/(.{2}).+(.{@?.+})/, '$1***$2');
+            transportInfo.options = masked;
+        }
+    } catch (e) {}
+    res.json({ ok: true, transportInfo, logsSample: mailerLogs.slice(0,10) });
+});
 
 // In-memory mailer logs (last 50 events) to help debugging delivery
 const mailerLogs = [];
