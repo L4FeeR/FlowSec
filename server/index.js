@@ -83,6 +83,11 @@ const transporter = nodemailer.createTransport({
     }
 });
 
+// Verify transporter at startup
+transporter.verify()
+    .then(() => console.log('Mailer: transporter verified'))
+    .catch(err => console.error('Mailer: transporter verification failed', err && err.message ? err.message : err));
+
 function generateOtp() {
     return Math.floor(100000 + Math.random() * 900000).toString();
 }
@@ -91,7 +96,6 @@ function generateOtp() {
 // Send OTP endpoint — respond quickly and send email asynchronously to avoid request timeouts
 app.post('/api/send-otp', async (req, res) => {
     const { email } = req.body;
-    // Debug logging to help diagnose CORS/timeout issues in deployed logs
     try {
         console.log('[send-otp] Incoming request', {
             origin: req.headers.origin,
@@ -99,42 +103,61 @@ app.post('/api/send-otp', async (req, res) => {
             bodySize: req.headers['content-length'] || null,
             timestamp: new Date().toISOString()
         });
-    } catch (logErr) {
-        // ignore logging errors
-    }
+    } catch (logErr) {}
+
     if (!email) return res.status(400).json({ message: 'Email required' });
     const otp = generateOtp();
 
-    // Respond immediately so the client isn't blocked by DB or email delivery delays
+    // Respond immediately
     res.json({ message: 'OTP sent' });
 
-    // Perform DB writes and send the email in background
+    // Background work
     (async () => {
         try {
             try {
-                await Otp.deleteMany({ email }); // Remove old OTPs
+                await Otp.deleteMany({ email });
                 await Otp.create({ email, otp });
                 console.log('OTP stored for', email);
             } catch (dbErr) {
                 console.error('Failed to write OTP to DB for', email, dbErr && dbErr.message ? dbErr.message : dbErr);
             }
 
-            const sendPromise = transporter.sendMail({
+            const mailOptions = {
                 from: process.env.EMAIL_USER,
                 to: email,
                 subject: 'Your OTP for Secure Messenger',
-                text: `Your OTP is: ${otp}`
-            });
+                text: `Your OTP is: ${otp}`,
+                html: `<p>Your OTP is: <strong>${otp}</strong></p><p>This code expires in 5 minutes.</p>`
+            };
 
-            // Timeout after 15 seconds for mailer
+            const sendPromise = transporter.sendMail(mailOptions);
             const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('mailer timeout')), 15000));
-            await Promise.race([sendPromise, timeout]);
-            console.log('OTP email sent to', email);
+            const info = await Promise.race([sendPromise, timeout]);
+
+            console.log('OTP email sent to', email, 'info:', info && (info.messageId || JSON.stringify(info)));
         } catch (err) {
-            // Log errors for debugging — do not affect client response
             console.error('Failed background tasks for OTP to', email, err && err.message ? err.message : err);
         }
     })();
+});
+
+// Test email endpoint (use to validate mailer from deployed service)
+app.post('/api/test-email', async (req, res) => {
+    const to = req.body?.to || process.env.EMAIL_USER;
+    const mailOptions = {
+        from: process.env.EMAIL_USER,
+        to,
+        subject: 'Test email from Secure Messenger',
+        text: 'This is a test email.',
+        html: '<p>This is a <strong>test</strong> email.</p>'
+    };
+    try {
+        const info = await transporter.sendMail(mailOptions);
+        return res.json({ ok: true, messageId: info.messageId });
+    } catch (err) {
+        console.error('Test email failed', err && err.message ? err.message : err);
+        return res.status(500).json({ ok: false, error: err.message || String(err) });
+    }
 });
 
 // Lightweight health check for uptime testing
