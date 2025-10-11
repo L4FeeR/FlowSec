@@ -75,18 +75,42 @@ const otpSchema = new mongoose.Schema({
 const Otp = mongoose.model('Otp', otpSchema);
 
 // Nodemailer setup
-const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-    }
-});
+let transporter;
+let transporterType = 'none';
+if (process.env.SENDGRID_API_KEY) {
+    // Use SendGrid SMTP when API key is provided (recommended for deliverability)
+    transporter = nodemailer.createTransport({
+        host: 'smtp.sendgrid.net',
+        port: 587,
+        secure: false,
+        auth: {
+            user: 'apikey',
+            pass: process.env.SENDGRID_API_KEY
+        }
+    });
+    transporterType = 'sendgrid-smtp';
+    console.log('Mailer: configured to use SendGrid SMTP (SENDGRID_API_KEY detected)');
+} else if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+    // Fallback to Gmail SMTP (requires app password / proper credentials)
+    transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASS
+        }
+    });
+    transporterType = 'gmail';
+    console.log('Mailer: configured to use Gmail SMTP (EMAIL_USER set)');
+} else {
+    console.warn('Mailer: no mail credentials found (set SENDGRID_API_KEY or EMAIL_USER/EMAIL_PASS)');
+}
 
-// Verify transporter at startup
-transporter.verify()
-    .then(() => console.log('Mailer: transporter verified'))
-    .catch(err => console.error('Mailer: transporter verification failed', err && err.message ? err.message : err));
+// Verify transporter at startup if present
+if (transporter) {
+    transporter.verify()
+        .then(() => console.log(`Mailer: transporter verified (${transporterType})`))
+        .catch(err => console.error('Mailer: transporter verification failed', err && err.message ? err.message : err));
+}
 
 // In-memory mailer logs (last 50 events) to help debugging delivery
 const mailerLogs = [];
