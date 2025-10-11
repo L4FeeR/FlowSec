@@ -123,7 +123,25 @@ if (sendgridEnabled) {
 } else if (transporter) {
     transporter.verify()
         .then(() => console.log(`Mailer: transporter verified (${transporterType})`))
-        .catch(err => console.error('Mailer: transporter verification failed', err && err.message ? err.message : err));
+        .catch(err => {
+            // Log full context and push to mailer logs
+            const msg = err && err.message ? err.message : String(err);
+            console.error('Mailer: transporter verification failed', msg);
+            pushMailerLog({ type: 'verify', provider: transporterType, ok: false, error: msg });
+
+            // Fall back to a safe jsonTransport so the app can continue to run and deliver
+            // developer-visible mail content into logs (not real email). This avoids repeated
+            // background failures while you configure a working SMTP or SendGrid key.
+            try {
+                transporter = nodemailer.createTransport(Object.assign({ jsonTransport: true }, transportBaseOptions));
+                transporterType = 'json-fallback';
+                console.warn('Mailer: falling back to jsonTransport due to verification failure');
+                pushMailerLog({ type: 'verify-fallback', provider: transporterType, ok: true, note: 'jsonTransport fallback activated' });
+            } catch (e) {
+                console.error('Mailer: failed to initialize jsonTransport fallback', e && e.message ? e.message : e);
+                pushMailerLog({ type: 'verify-fallback', provider: 'json-fallback', ok: false, error: e && e.message ? e.message : String(e) });
+            }
+        });
 }
 
 // Unified sendEmail helper: uses SendGrid API when available, otherwise falls back to transporter
