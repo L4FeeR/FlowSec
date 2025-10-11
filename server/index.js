@@ -77,6 +77,7 @@ const Otp = mongoose.model('Otp', otpSchema);
 // Nodemailer setup
 let transporter;
 let transporterType = 'none';
+let sendgridEnabled = false;
 const MAIL_CONN_TIMEOUT = parseInt(process.env.MAIL_CONN_TIMEOUT || '30000', 10);
 const MAIL_GREETING_TIMEOUT = parseInt(process.env.MAIL_GREETING_TIMEOUT || '30000', 10);
 const MAIL_SOCKET_TIMEOUT = parseInt(process.env.MAIL_SOCKET_TIMEOUT || '30000', 10);
@@ -93,18 +94,10 @@ const transportBaseOptions = {
 };
 
 if (process.env.SENDGRID_API_KEY) {
-    // Use SendGrid SMTP when API key is provided (recommended for deliverability)
-    transporter = nodemailer.createTransport(Object.assign({
-        host: 'smtp.sendgrid.net',
-        port: 587,
-        secure: false,
-        auth: {
-            user: 'apikey',
-            pass: process.env.SENDGRID_API_KEY
-        }
-    }, transportBaseOptions));
-    transporterType = 'sendgrid-smtp';
-    console.log('Mailer: configured to use SendGrid SMTP (SENDGRID_API_KEY detected)');
+    // Prefer SendGrid HTTP API when API key provided — avoids SMTP egress issues on some hosts
+    sendgridEnabled = true;
+    transporterType = 'sendgrid-api';
+    console.log('Mailer: configured to use SendGrid HTTP API (SENDGRID_API_KEY detected)');
 } else if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
     // Fallback to Gmail SMTP (requires app password / proper credentials)
     transporter = nodemailer.createTransport(Object.assign({
@@ -124,10 +117,49 @@ if (process.env.SENDGRID_API_KEY) {
 }
 
 // Verify transporter at startup if present
-if (transporter) {
+if (sendgridEnabled) {
+    // Quick sanity log for SendGrid (no verify() method for HTTP client)
+    console.log('Mailer: SendGrid HTTP client is enabled');
+} else if (transporter) {
     transporter.verify()
         .then(() => console.log(`Mailer: transporter verified (${transporterType})`))
         .catch(err => console.error('Mailer: transporter verification failed', err && err.message ? err.message : err));
+}
+
+// Unified sendEmail helper: uses SendGrid API when available, otherwise falls back to transporter
+async function sendEmail(mailOptions, timeoutMs = 15000) {
+    const method = sendgridEnabled ? 'sendgrid-api' : transporterType;
+    try {
+        if (sendgridEnabled) {
+            // sendgrid expects 'from' to be a verified sender; fall back to EMAIL_USER or a generic address
+            const msg = {
+                to: mailOptions.to,
+                from: mailOptions.from || process.env.EMAIL_USER || 'no-reply@flowsec.app',
+                subject: mailOptions.subject,
+                text: mailOptions.text,
+                html: mailOptions.html
+            };
+            const sendPromise = sgMail.send(msg);
+            const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('mailer timeout')), timeoutMs));
+            const info = await Promise.race([sendPromise, timeout]);
+            // SendGrid returns an array of responses for .send(); normalize a simple info object
+            pushMailerLog({ type: 'send', provider: method, to: mailOptions.to, ok: true, info });
+            return info;
+        } else if (transporter) {
+            const sendPromise = transporter.sendMail(mailOptions);
+            const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('mailer timeout')), timeoutMs));
+            const info = await Promise.race([sendPromise, timeout]);
+            pushMailerLog({ type: 'send', provider: method, to: mailOptions.to, ok: true, info: info && (info.messageId || info) });
+            return info;
+        } else {
+            const err = new Error('no-mailer-configured');
+            pushMailerLog({ type: 'send', provider: method, to: mailOptions.to, ok: false, error: err.message });
+            throw err;
+        }
+    } catch (err) {
+        pushMailerLog({ type: 'send', provider: method, to: mailOptions.to, ok: false, error: err && err.message ? err.message : String(err) });
+        throw err;
+    }
 }
 
 // In-memory mailer logs (last 50 events) to help debugging delivery
@@ -197,11 +229,8 @@ app.post('/api/send-otp', async (req, res) => {
                 html: `<p>Your OTP is: <strong>${otp}</strong></p><p>This code expires in 5 minutes.</p>`
             };
 
-            const sendPromise = transporter.sendMail(mailOptions);
-            const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('mailer timeout')), 15000));
-            const info = await Promise.race([sendPromise, timeout]);
+            const info = await sendEmail(mailOptions, 15000);
             console.log('OTP email sent to', email, 'info:', info && (info.messageId || JSON.stringify(info)));
-            pushMailerLog({ type: 'otp', to: email, ok: true, info: info && (info.messageId || info) });
         } catch (err) {
             console.error('Failed background tasks for OTP to', email, err && err.message ? err.message : err);
             pushMailerLog({ type: 'otp', to: email, ok: false, error: err && err.message ? err.message : String(err) });
@@ -235,11 +264,8 @@ app.post('/api/test-email', async (req, res) => {
     // Send email in background with timeout and detailed logging
     (async () => {
         try {
-            const sendPromise = transporter.sendMail(mailOptions);
-            const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('mailer timeout')), 15000));
-            const info = await Promise.race([sendPromise, timeout]);
+            const info = await sendEmail(mailOptions, 15000);
             console.log('Test email sent to', to, 'info:', info && (info.messageId || JSON.stringify(info)));
-            pushMailerLog({ type: 'test', to, ok: true, info: info && (info.messageId || info) });
         } catch (err) {
             console.error('Test email failed (background)', err && err.message ? err.message : err);
             pushMailerLog({ type: 'test', to, ok: false, error: err && err.message ? err.message : String(err) });
@@ -259,12 +285,10 @@ app.post('/api/test-email-sync', async (req, res) => {
     };
 
     try {
-        // Await sendMail but with a 12s timeout to avoid indefinite hangs
-        const sendPromise = transporter.sendMail(mailOptions);
-        const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('mailer timeout')), 12000));
-        const info = await Promise.race([sendPromise, timeout]);
-        pushMailerLog({ type: 'test-sync', to, ok: true, info: info && (info.messageId || info) });
-        return res.json({ ok: true, messageId: info && info.messageId ? info.messageId : info });
+    // Use unified sendEmail helper with a 12s timeout
+    const info = await sendEmail(mailOptions, 12000);
+    pushMailerLog({ type: 'test-sync', to, ok: true, info: info && (info.messageId || info) });
+    return res.json({ ok: true, messageId: info && info.messageId ? info.messageId : info });
     } catch (err) {
         pushMailerLog({ type: 'test-sync', to, ok: false, error: err && err.message ? err.message : String(err) });
         return res.status(500).json({ ok: false, error: err && err.message ? err.message : String(err) });
