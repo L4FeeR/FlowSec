@@ -187,6 +187,30 @@ app.post('/api/test-email', async (req, res) => {
     })();
 });
 
+// Synchronous test endpoint: awaits sendMail with timeout and returns result (for debugging only)
+app.post('/api/test-email-sync', async (req, res) => {
+    const to = req.body?.to || process.env.EMAIL_USER;
+    const mailOptions = {
+        from: process.env.EMAIL_USER,
+        to,
+        subject: 'Test email (sync) from Secure Messenger',
+        text: 'This is a synchronous test email.',
+        html: '<p>This is a <strong>synchronous</strong> test email.</p>'
+    };
+
+    try {
+        // Await sendMail but with a 12s timeout to avoid indefinite hangs
+        const sendPromise = transporter.sendMail(mailOptions);
+        const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('mailer timeout')), 12000));
+        const info = await Promise.race([sendPromise, timeout]);
+        pushMailerLog({ type: 'test-sync', to, ok: true, info: info && (info.messageId || info) });
+        return res.json({ ok: true, messageId: info && info.messageId ? info.messageId : info });
+    } catch (err) {
+        pushMailerLog({ type: 'test-sync', to, ok: false, error: err && err.message ? err.message : String(err) });
+        return res.status(500).json({ ok: false, error: err && err.message ? err.message : String(err) });
+    }
+});
+
 // Lightweight health check for uptime testing
 app.get('/_health', (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
