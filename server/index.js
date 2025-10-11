@@ -151,13 +151,21 @@ app.post('/api/test-email', async (req, res) => {
         text: 'This is a test email.',
         html: '<p>This is a <strong>test</strong> email.</p>'
     };
-    try {
-        const info = await transporter.sendMail(mailOptions);
-        return res.json({ ok: true, messageId: info.messageId });
-    } catch (err) {
-        console.error('Test email failed', err && err.message ? err.message : err);
-        return res.status(500).json({ ok: false, error: err.message || String(err) });
-    }
+
+    // Respond immediately so requests don't hit Render gateway timeout
+    res.json({ ok: true, queued: true });
+
+    // Send email in background with timeout and detailed logging
+    (async () => {
+        try {
+            const sendPromise = transporter.sendMail(mailOptions);
+            const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('mailer timeout')), 15000));
+            const info = await Promise.race([sendPromise, timeout]);
+            console.log('Test email sent to', to, 'info:', info && (info.messageId || JSON.stringify(info)));
+        } catch (err) {
+            console.error('Test email failed (background)', err && err.message ? err.message : err);
+        }
+    })();
 });
 
 // Lightweight health check for uptime testing
